@@ -1,0 +1,38 @@
+doctype html
+html(lang="en")
+head
+	meta(charset="UTF-8")
+	meta(name="viewport", content="width=device-width, initial-scale=1.0")
+	title= meta.title
+	link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css", integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3", crossorigin="anonymous")
+	link(type="text/css", rel="stylesheet", href="css/lightgallery-bundle.min.css")
+	link(type="text/css", rel="stylesheet", href="static/style.css")
+body
+	#main
+		h1.centered= meta.title
+		h4.centered= meta.description
+	.container#gallery
+		each file in photos
+			div.item(data-src=`${gallery_path}/${file}`)
+				img(src=`${gallery_path}/${file}`)
+
+	// Bootstrap
+	script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js", integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13", crossorigin="anonymous")
+
+	// Lightgallery main
+	script(src="js/lightgallery.min.js")
+
+	// Additional plugins
+	script(src="plugins/autoplay/lg-autoplay.min.js")
+	script(src="plugins/thumbnail/lg-thumbnail.min.js")
+	script(src="plugins/zoom/lg-zoom.min.js")
+
+	// Lightgallery configuration
+	script(type="text/javascript").
+		lightGallery(document.getElementById('gallery'), {
+			selector: '.item',
+			plugins: [lgZoom, lgThumbnail, lgAutoplay],
+			thumbnail: true,
+			speed: 500,
+			width: '100%'
+		});

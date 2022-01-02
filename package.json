@@ -1,0 +1,20 @@
+{
+  "name": "gallery-server",
+  "version": "1.0.0",
+  "description": "Service for Gallery",
+  "main": "server.js",
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "express": "^4.17.2",
+    "find-config": "^1.0.0",
+    "lightgallery": "^2.3.0",
+    "mysql": "^2.18.1",
+    "pug": "^3.0.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Sinipelto",
+  "license": "MIT"
+}
