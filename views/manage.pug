@@ -1,0 +1,267 @@
+include _header.pug
+include _bs_head.pug
+
+body
+	#main
+		section.jumbotron.text-center
+			.container
+				h1.jumbotron-heading Album Token Management:
+			p.lead.text-muted.
+				Create, update, revoke access keys to different albums here.
+		.container.text-center.col-auto
+			h2 Current keys:
+			.table-responsive
+				table.table.table-striped.table-lg
+					thead
+						tr
+							th ID 
+							th Album
+							th Value
+							th Usages
+							th Created
+							th
+							th
+					tbody
+						each entry in data
+							tr
+								th(scope="row")= entry.id
+								td= entry.album
+								td= entry.value
+								td= entry.usages
+								td= entry.created.toLocaleString()
+								//- td
+								//- 	button(onclick=`modifyKey(#{entry.id});`) Modify
+								td
+									button(onclick=`revokeKey(${entry.id});`).btn.btn-warning Revoke
+								td
+									button(onclick=`deleteKey(${entry.id});`).btn.btn-danger Delete
+
+			br
+			br
+			br
+
+			.container.text-center
+				.row
+					.col
+						h1 Create a new key:
+						label(for="keyAlbumCreate") Album name:
+						br
+						input#keyAlbumCreate(type="text")
+						p#errorAlbumCreate
+						br
+						br
+						label(for="keyUsageCreate") Usages for key (>= 0):
+						br
+						input#keyUsageCreate(type="text")
+						p#errorUsageCreate
+						br
+						br
+						button(onclick="createKey();").btn.btn-primary Create New Key
+					.col
+						h1 Update an existing key:
+						label(for="keyIdUpdate") Key ID:
+						br
+						input#keyIdModify(type="text")
+						p#errorIdUpdate
+						br
+						br
+						label(for="keyUsageUpdate") Usages for key (>= 0):
+						br
+						input#keyUsageModify(type="text")
+						p#errorUsageUpdate
+						br
+						br
+						button(onclick="modifyKey();").btn.btn-secondary Update Key
+
+	include _bs_foot.pug
+
+	script(type="text/javascript").
+		//- document.getElementById('formCreate').addEventListener('submit', e => {
+		//- 	e.preventDefault();
+		//- });
+
+		//- document.getElementById('formModify').addEventListener('submit', e => {
+		//- 	e.preventDefault();
+		//- });
+
+		const revokeKey = id => {
+			console.log("REVOKE KEY CALLED.");
+			
+			fetch("/management", {
+				'method': 'POST',
+				'headers': {'Content-Type': 'application/json'},
+				'body': {
+					'key': '#{key}',
+					'action': 'revoke',
+					'target_id': id
+				}
+			}).then(res => {
+				//- console.log("RESP:", res, res.text());
+				//- console.log("STATUS:", res.status, res.statusText);
+				location.reload();
+			});
+		}
+
+		const deleteKey = () => {
+			console.log("DELETE KEY CALLED.");
+			
+			fetch("/management", {
+				'method': 'POST',
+				'headers': {'Content-Type': 'application/json'},
+				'body': {
+					'key': '#{key}',
+					'action': 'delete',
+					'target_id': id
+				}
+			}).then(res => {
+				//- console.log("RESP:", res, res.text());
+				//- console.log("STATUS:", res.status, res.statusText);
+				location.reload();
+			});
+		}
+
+		const updateKey = () => {
+			console.log("UPDATE KEY CALLED.");
+
+			const errorId = document.getElementById('errorIdUpdate');
+			const errorUsage = document.getElementById('errorUsageUpdate');
+
+			// Clear old error messages
+			errorId.innerText = "";
+			errorUsage.innerText = "";
+
+			const inputId = document.getElementById('keyIdUpdate');
+			const inputUsage = document.getElementById('keyUsageUpdate');
+
+			if (inputId == null || inputId.value == null) {
+				const err = "Could not read ID input!";
+				errorId.innerText = err;
+				throw err;
+			}
+
+			if (inputUsage == null || inputUsage.value == null) {
+				const err = "Could not read usage count input!";
+				errorUsage.innerText = err;
+				throw err;
+			}
+
+			if (typeof inputId.value != 'string' || inputId.value == '') {
+				const err = "Invalid or empty value for ID!";
+				errorId.innerText = err;
+				throw err;
+			}
+
+			if (typeof inputUsage.value != 'string' || inputUsage.value == '') {
+				const err = "Invalid or empty value for usage count!";
+				errorUsage.innerText = err;
+				throw err;
+			}
+
+			if (isNaN(inputId.value)) {
+				const err = "ID must be a number!";
+				errorId.innerText = err;
+				throw err;
+			} else if (inputId.value < 0) {
+				const err = "ID must have value greater than or equal to zero (>= 0)!";
+				errorId.innerText = err;
+				throw err;
+			}
+
+			if (isNaN(inputUsage.value)) {
+				const err = "Usage count must be a number!";
+				errorUsage.innerText = err;
+				throw err;
+			} else if (inputUsage.value < 0) {
+				const err = "Usage count must have value greater than or equal to zero (>= 0)!";
+				errorUsage.innerText = err;
+				throw err;
+			}
+
+			console.log("ID:", inputId.value);
+			console.log("USAGE:", inputUsage.value);
+
+			fetch("/management", {
+				'method': 'POST',
+				'headers': {'Content-Type': 'application/json'},
+				'body': JSON.stringify({
+					'key': '#{key}',
+					'action': 'new',
+					'target_id': Number(inputId.value),
+					'data': {
+						'usages': Number(inputUsage.value)
+					}
+				})
+			}).then(res => {
+				//- console.log("RESP:", res, res.text());
+				//- console.log("STATUS:", res.status, res.statusText);
+				location.reload();
+			});
+		}
+
+		const createKey = () => {
+			console.log("CREATE KEY CALLED.");
+
+			const errorAlbum = document.getElementById('errorAlbumCreate');
+			const errorUsage = document.getElementById('errorUsageCreate');
+
+			// Clear old error messages
+			errorAlbum.innerText = "";
+			errorUsage.innerText = "";
+
+			const inputAlbum = document.getElementById('keyAlbumCreate');
+			const inputUsage = document.getElementById('keyUsageCreate');
+
+			if (inputAlbum == null || inputAlbum.value == null) {
+				const err = "Could not read album name input!";
+				errorAlbum.innerText = err;
+				throw err;
+			}
+
+			if (inputUsage == null || inputUsage.value == null) {
+				const err = "Could not read usage count input!";
+				errorUsage.innerText = err;
+				throw err;
+			}
+
+			if (typeof inputAlbum.value != 'string' || inputAlbum.value == '') {
+				const err = "Invalid or empty value for album name!";
+				errorAlbum.innerText = err;
+				throw err;
+			}
+
+			if (typeof inputUsage.value != 'string' || inputUsage.value == '') {
+				const err = "Invalid or empty value for usage count!";
+				errorUsage.innerText = err;
+				throw err;
+			}
+
+			if (isNaN(inputUsage.value)) {
+				const err = "Usage count must be a number!";
+				errorUsage.innerText = err;
+				throw err;
+			} else if (inputUsage.value < 0) {
+				const err = "Usage count must have value greater than or equal to zero (>= 0)!";
+				errorUsage.innerText = err;
+				throw err;
+			}
+
+			console.log("ALBUM:", inputAlbum.value);
+			console.log("USAGE:", inputUsage.value);
+
+			fetch("/management", {
+				'method': 'POST',
+				'headers': {'Content-Type': 'application/json'},
+				'body': JSON.stringify({
+					'key': '#{key}',
+					'action': 'new',
+					'data': {
+						'album': (inputAlbum.value.startsWith('/')) ? inputAlbum.value : '/' + inputAlbum.value,
+						'usages': Number(inputUsage.value)
+					}
+				})
+			}).then(res => {
+				//- console.log("RESP:", res, res.text());
+				//- console.log("STATUS:", res.status, res.statusText);
+				location.reload();
+			});
+		}
