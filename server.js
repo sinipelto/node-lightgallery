@@ -2,8 +2,8 @@ require('dotenv').config({ path: require('find-config')('.env') });
 
 const utils = require('./utils.js');
 const fs = require('fs');
-const express = require('express');
 const mysql = require('mysql');
+const express = require('express');
 
 // Init express
 const app = express();
@@ -40,7 +40,7 @@ unauthorized = (err, res) => {
 		);
 }
 
-const con = () => {
+const createCon = () => {
 	const conn = mysql.createConnection({
 		host: process.env.MYSQL_HOST,
 		user: process.env.MYSQL_USER,
@@ -51,6 +51,13 @@ const con = () => {
 	conn.on('error', err => {
 		console.error("Error during DB connection:", err);
 	});
+
+	conn.connect(cerr => {
+		if (cerr) {
+			console.error(cerr);
+			throw cerr;
+		}
+	})
 	
 	return conn;
 };
@@ -59,7 +66,9 @@ app.get('/', (req, res) => {
 	console.log("REQ PATH:", req.path);
 	console.log("REQ QUERY:", req.query);
 
-	utils.verifyKey(con(), '/', req.query.key, (err, ok) => {
+	const con = createCon();
+
+	utils.verifyKey(con, '/', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -78,13 +87,15 @@ app.get('/management', (req, res) => {
 	console.log("REQ PATH:", req.path);
 	console.log("REQ QUERY:", req.query);
 
-	utils.verifyKey(con(), '/management', req.query.key, (err, ok) => {
+	const con = createCon();
+
+	utils.verifyKey(con, '/management', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
 		}
 		else {
-			utils.getKeys(con(), null, (err, data) => {
+			utils.getKeys(con, null, (err, data) => {
 				if (err || !ok) {
 					console.error(err);
 					res.status(500).send("Failed to get keys from server.");
@@ -105,7 +116,9 @@ app.post('/management', (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ BODY:", req.body);
 
-	utils.verifyKey(con(), '/management', req.body.key, (err, ok) => {
+	const con = createCon();
+
+	utils.verifyKey(con, '/management', req.body.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -115,10 +128,10 @@ app.post('/management', (req, res) => {
 				action = req.body.action;
 				target_id = req.body.target_id;
 				data = req.body.data;
-				
+
 				switch (action) {
 					case "get":
-						utils.getKeys(con(), data.album, (err, result) => {
+						utils.getKeys(con, data.album, (err, result) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to get keys:" + err);
@@ -128,7 +141,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "new":
-						utils.createKey(con(), data.album, data.usages, (err, ok) => {
+						utils.createKey(con, data.album, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to add new key: " + err);
@@ -138,7 +151,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "update":
-						utils.updateKey(con(), target_id, data.usages, (err, ok) => {
+						utils.updateKey(con, target_id, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to modify key:" + err);
@@ -148,7 +161,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "revoke":
-						utils.revokeKey(con(), target_id, (err, ok) => {
+						utils.revokeKey(con, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to revoke key:" + err);
@@ -156,8 +169,9 @@ app.post('/management', (req, res) => {
 								res.sendStatus(200);
 							}
 						});
+						break;
 					case "delete":
-						utils.deleteKey(con(), target_id, (err, ok) => {
+						utils.deleteKey(con, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to delete key:" + err);
@@ -186,8 +200,10 @@ app.get('*', (req, res) => {
 	const target_url = photo_url + req.path;
 	const target_path = photo_path + req.path;
 
+	const con = createCon();
+
 	if (fs.existsSync(target_path)) {
-		utils.verifyKey(con(), req.path, req.query.key, (err, ok) => {
+		utils.verifyKey(con, req.path, req.query.key, (err, ok) => {
 			if (err || !ok) {
 				console.error(err);
 				unauthorized(err, res);

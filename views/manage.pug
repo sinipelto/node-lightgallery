@@ -8,6 +8,9 @@ body
 				h1.jumbotron-heading Album Token Management:
 			p.lead.text-muted.
 				Create, update, revoke access keys to different albums here.
+		br
+		br
+
 		.container.text-center.col-auto
 			h2 Current keys:
 			.table-responsive
@@ -29,8 +32,6 @@ body
 								td= entry.value
 								td= entry.usages
 								td= entry.created.toLocaleString()
-								//- td
-								//- 	button(onclick=`modifyKey(#{entry.id});`) Modify
 								td
 									button(onclick=`revokeKey(${entry.id});`).btn.btn-warning Revoke
 								td
@@ -61,40 +62,32 @@ body
 						h1 Update an existing key:
 						label(for="keyIdUpdate") Key ID:
 						br
-						input#keyIdModify(type="text")
+						input#keyIdUpdate(type="text")
 						p#errorIdUpdate
 						br
 						br
 						label(for="keyUsageUpdate") Usages for key (>= 0):
 						br
-						input#keyUsageModify(type="text")
+						input#keyUsageUpdate(type="text")
 						p#errorUsageUpdate
 						br
 						br
-						button(onclick="modifyKey();").btn.btn-secondary Update Key
+						button(onclick="updateKey();").btn.btn-secondary Update Key
 
 	include _bs_foot.pug
 
 	script(type="text/javascript").
-		//- document.getElementById('formCreate').addEventListener('submit', e => {
-		//- 	e.preventDefault();
-		//- });
-
-		//- document.getElementById('formModify').addEventListener('submit', e => {
-		//- 	e.preventDefault();
-		//- });
-
 		const revokeKey = id => {
 			console.log("REVOKE KEY CALLED.");
 			
 			fetch("/management", {
 				'method': 'POST',
 				'headers': {'Content-Type': 'application/json'},
-				'body': {
+				'body': JSON.stringify({
 					'key': '#{key}',
 					'action': 'revoke',
 					'target_id': id
-				}
+				})
 			}).then(res => {
 				//- console.log("RESP:", res, res.text());
 				//- console.log("STATUS:", res.status, res.statusText);
@@ -102,17 +95,17 @@ body
 			});
 		}
 
-		const deleteKey = () => {
+		const deleteKey = id => {
 			console.log("DELETE KEY CALLED.");
 			
 			fetch("/management", {
 				'method': 'POST',
 				'headers': {'Content-Type': 'application/json'},
-				'body': {
+				'body': JSON.stringify({
 					'key': '#{key}',
 					'action': 'delete',
 					'target_id': id
-				}
+				})
 			}).then(res => {
 				//- console.log("RESP:", res, res.text());
 				//- console.log("STATUS:", res.status, res.statusText);
@@ -185,7 +178,7 @@ body
 				'headers': {'Content-Type': 'application/json'},
 				'body': JSON.stringify({
 					'key': '#{key}',
-					'action': 'new',
+					'action': 'update',
 					'target_id': Number(inputId.value),
 					'data': {
 						'usages': Number(inputUsage.value)
