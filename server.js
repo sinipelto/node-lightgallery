@@ -172,10 +172,12 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
-	const photo_file = photo_path + '/' + req.params['0'] + '/' + req.params.photo;
+	const album_url = '/' + req.params['0'];
+	const file_url = '/' + req.params.photo;
+	const photo_file = photo_path + album_url + file_url;
 
 	// We can first verify the key since it does NOT consume in here
-	utils.verifyKey(dbConnection, req.path, req.query.key, (err, ok) => {
+	utils.verifyKey(dbConnection, album_url, req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
