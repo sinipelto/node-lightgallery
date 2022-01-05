@@ -2,7 +2,6 @@ require('dotenv').config({ path: require('find-config')('.env') });
 
 const utils = require('./utils.js');
 const fs = require('fs');
-const mysql = require('mysql');
 const express = require('express');
 
 // Init express
@@ -10,14 +9,12 @@ const app = express();
 const host = process.env.NODE_HOST;
 const port = process.env.NODE_PORT;
 
-const photo_url = "/albums";
+const photo_url = process.env.PHOTOS_URL;
 const photo_path = __dirname + process.env.PHOTOS_PATH;
 
 // Load static assets
-app.use(photo_url, express.static(photo_path));
-
 app.use('/favicon.ico', express.static(__dirname + process.env.FAVICON_PATH));
-app.use('/static', express.static(__dirname + process.env.STATIC_DIR))
+app.use('/static', express.static(__dirname + process.env.STATIC_DIR));
 
 app.use('/css', express.static(__dirname + '/node_modules/lightgallery/css'));
 app.use('/js', express.static(__dirname + '/node_modules/lightgallery'));
@@ -34,41 +31,21 @@ app.use(express.json());
 
 unauthorized = (err, res) => {
 	return res
-	.status(401).send("Invalid auth key provided." + 
-		" Ensure parameter 'key' in the URL is set and is correct." + 
-		"<br><br>DEBUG INFO: " + err
-		);
-}
-
-const createCon = () => {
-	const conn = mysql.createConnection({
-		host: process.env.MYSQL_HOST,
-		user: process.env.MYSQL_USER,
-		password: process.env.MYSQL_PW,
-		database: process.env.MYSQL_DB
-	});
-	
-	conn.on('error', err => {
-		console.error("Error during DB connection:", err);
-	});
-
-	conn.connect(cerr => {
-		if (cerr) {
-			console.error(cerr);
-			throw cerr;
-		}
-	})
-	
-	return conn;
+		.status(401)
+		.send("Invalid auth key provided." +
+			" Ensure parameter 'key' in the URL is set and is correct." +
+			"<br><br>DEBUG INFO: " + err
+			);
 };
 
+const dbConnection = utils.createConn();
+
 app.get('/', (req, res) => {
-	console.log("REQ PATH:", req.path);
-	console.log("REQ QUERY:", req.query);
+	// console.log("REQ PATH:", req.path);
+	// console.log("REQ QUERY:", req.query);
+	// console.log("REQ PARAMS:", req.params);
 
-	const con = createCon();
-
-	utils.verifyKey(con, '/', req.query.key, (err, ok) => {
+	utils.verifyKey(dbConnection, '/', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -84,27 +61,25 @@ app.get('/', (req, res) => {
 });
 
 app.get('/management', (req, res) => {
-	console.log("REQ PATH:", req.path);
-	console.log("REQ QUERY:", req.query);
+	// console.log("REQ PATH:", req.path);
+	// console.log("REQ QUERY:", req.query);
+	// console.log("REQ PARAMS:", req.params);
 
-	const con = createCon();
-
-	utils.verifyKey(con, '/management', req.query.key, (err, ok) => {
+	utils.verifyKey(dbConnection, '/management', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
 		}
 		else {
-			utils.getKeys(con, null, (err, data) => {
-				if (err || !ok) {
+			utils.getKeys(dbConnection, null, (err, data) => {
+				if (err || !data) {
 					console.error(err);
 					res.status(500).send("Failed to get keys from server.");
 				} else {
-					// console.log(data);
 					res.render('manage', {
 						key: req.query.key,
 						data
-					});						
+					});
 				}
 			});
 		}
@@ -112,13 +87,12 @@ app.get('/management', (req, res) => {
 });
 
 app.post('/management', (req, res) => {
-	console.log("REQ PATH:", req.path);
-	console.log("REQ QUERY:", req.query);
-	console.log("REQ BODY:", req.body);
+	// console.log("REQ PATH:", req.path);
+	// console.log("REQ QUERY:", req.query);
+	// console.log("REQ BODY:", req.body);
+	// console.log("REQ PARAMS:", req.params);
 
-	const con = createCon();
-
-	utils.verifyKey(con, '/management', req.body.key, (err, ok) => {
+	utils.verifyKey(dbConnection, '/management', req.body.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -131,8 +105,8 @@ app.post('/management', (req, res) => {
 
 				switch (action) {
 					case "get":
-						utils.getKeys(con, data.album, (err, result) => {
-							if (err || !ok) {
+						utils.getKeys(dbConnection, data.album, (err, result) => {
+							if (err || !result) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to get keys:" + err);
 							} else {
@@ -141,7 +115,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "new":
-						utils.createKey(con, data.album, data.usages, (err, ok) => {
+						utils.createKey(dbConnection, data.album, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to add new key: " + err);
@@ -151,7 +125,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "update":
-						utils.updateKey(con, target_id, data.usages, (err, ok) => {
+						utils.updateKey(dbConnection, target_id, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to modify key:" + err);
@@ -161,7 +135,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "revoke":
-						utils.revokeKey(con, target_id, (err, ok) => {
+						utils.revokeKey(dbConnection, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to revoke key:" + err);
@@ -171,7 +145,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "delete":
-						utils.deleteKey(con, target_id, (err, ok) => {
+						utils.deleteKey(dbConnection, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to delete key:" + err);
@@ -185,49 +159,90 @@ app.post('/management', (req, res) => {
 						res.status(400).send("ERROR: Unknown action request received.");
 						break;
 				}
-			} catch (err) {
-				console.error("FAILED TO PROCESS POST:", err);
-				res.status(500).send("Caught exception during request processing: " + err);
+			} catch (cerr) {
+				console.error("FAILED TO PROCESS POST:", cerr);
+				res.status(500).send("Caught exception during request processing: " + cerr);
 			}
 		}
 	});	
 });
 
-app.get('*', (req, res) => {
-	console.log("REQ PATH:", req.path);
-	console.log("REQ QUERY:", req.query);
+app.get(photo_url + '/*' + '/:photo', (req, res) => {
+	// console.log("REQ PATH:", req.path);
+	// console.log("REQ QUERY:", req.query);
+	// console.log("REQ PARAMS:", req.params);
 
-	const target_url = photo_url + req.path;
-	const target_path = photo_path + req.path;
+	const photo_file = photo_path + '/' + req.params['0'] + '/' + req.params.photo;
 
-	const con = createCon();
+	// We can first verify the key since it does NOT consume in here
+	utils.verifyKey(dbConnection, req.path, req.query.key, (err, ok) => {
+		if (err || !ok) {
+			console.error(err);
+			unauthorized(err, res);
+		}
+		else {
+			fs.exists(photo_file, e => {
+				if (e) {
+					res.sendFile(photo_file);
+				} else {
+					res.status(404).send("Requested photo was not found.");
+				}
+			});
+		}
+	}, false);
+});
 
-	if (fs.existsSync(target_path)) {
-		utils.verifyKey(con, req.path, req.query.key, (err, ok) => {
-			if (err || !ok) {
-				console.error(err);
-				unauthorized(err, res);
-			}
-			else {
-				const files = fs.readdirSync(target_path);
-				const meta = JSON.parse(fs.readFileSync(target_path + "/meta.json"));
+app.get('/:url', (req, res) => {
+	// console.log("REQ PATH:", req.path);
+	// console.log("REQ QUERY:", req.query);
+	// console.log("REQ PARAMS:", req.params);
 
-				console.log("FILES:", files);
-				console.log("META:", meta);
+	const url = '/' + req.params.url;
+	const target_url = photo_url + url;
+	const target_path = photo_path + url;
 
-				res.render(process.env.GALLERY_TEMPLATE, {
-					is_index: false, 
-					gallery_path: target_url, 
-					photos: utils.filterImages(files), 
-					meta
-				});
-			}
-		});
-	} else {
-		res.status(404).send("The album you were looking for was not found. Please double check the URL.");
-	}
+	fs.exists(target_path, e => {
+		if (e) {
+			utils.verifyKey(dbConnection, url, req.query.key, (err, ok) => {
+				if (err || !ok) {
+					console.error(err);
+					unauthorized(err, res);
+				}
+				else {
+					fs.readdir(target_path, (err, files) => {
+						if (err) {
+							console.error("Failed to process album files:", err);
+							res.sendStatus(500);
+						} else {
+							fs.readFile(target_path + "/meta.json", (err, file) => {
+								var meta;
+								
+								if (err) {
+									console.error("Failed to read album META:", err);
+									meta = utils.defaultMeta();
+								} else {
+									meta = JSON.parse(file);
+								}
+	
+								res.render('gallery', {
+									is_index: false,
+									gallery_path: target_url,
+									photos: utils.filterImages(files),
+									key: req.query.key,
+									meta
+								});
+							});
+						}
+					});
+				}
+			});
+		} else {
+			res.status(404).send("The album you were looking for was not found. Please double check the URL.");
+		}
+	});
 });
 
 app.listen(port, host, () => {
-  console.log("Listening at http://" + host + ":" + port)
+	console.log("Server started.");
+	console.log("Listening at http://" + host + ':' + port);
 });

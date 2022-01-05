@@ -1,12 +1,14 @@
+mysql = require('mysql');
+
 String.prototype.leftTrim = function() {
     return this.replace(/^\s+/,"");
-}
+};
 
 // Defined on DB side
 // Depends on the keying method, etc.
 const KEY_LENGTH = 32;
 
-const verifyKey = function(con, album, key, callback) {
+const verifyKey = function(con, album, key, callback, consume = true) {
 	if (key == null || typeof key != 'string' || key == '' || key.length != KEY_LENGTH) {
 		callback("INVALID_KEY", false);
 		return;
@@ -22,33 +24,37 @@ const verifyKey = function(con, album, key, callback) {
 				return;
 			}
 			
+			// No keys found with query
 			if (res.length <= 0) {
 				console.error("Mathing key not found.");
 				callback("KEY_MATCH_NOT_FOUND", false);
-				return;
 			} else {
-				row = res[0];
-				updateKey(con, row.id, row.usages - 1, (err, ok) => {
-					if (err || !ok) {
-						console.error(err);
-						callback("UPDATE_USAGES_FAILED", false);
-						return;
-					} else if (row.value == key) {
-						callback(null, true);
-						return;
-					} else {
-						// This should never occur
-						callback("KEY_VERIFICATION_MISMATCH", false);
-						return;
-					}
-				});
+				if (consume) {
+					row = res[0];
+					updateKey(con, row.id, row.usages - 1, (err, ok) => {
+						if (err || !ok) {
+							console.error(err);
+							callback("UPDATE_USAGES_FAILED", false);
+							return;
+						} else if (row.value == key) {
+							callback(null, true);
+							return;
+						} else {
+							// This should never occur
+							callback("KEY_VERIFICATION_MISMATCH", false);
+							return;
+						}
+					});
+				} else {
+					callback(null, true);					
+				}
 			}
 		});
 	} catch (err) {
 		console.error("Caught exception:", err);
 		callback(err, false);
 	}
-}
+};
 
 const createKey = function(con, album, usages, callback) {
 	if (album == null || typeof album != 'string') {
@@ -86,7 +92,7 @@ const createKey = function(con, album, usages, callback) {
 				}
 			});
 	});
-}
+};
 
 const updateKey = function(con, id, usages, callback) {
 	if (id == null || typeof id != 'number' || isNaN(id) || id < 0) {
@@ -128,11 +134,11 @@ const updateKey = function(con, id, usages, callback) {
 			});
 		}
 	});
-}
+};
 
 const revokeKey = function(con, id, callback) {
 	updateKey(con, id, 0, callback);
-}
+};
 
 const deleteKey = function(con, id, callback) {
 	if (id == null || typeof id != 'number' || isNaN(id) || id < 0) {
@@ -168,7 +174,7 @@ const deleteKey = function(con, id, callback) {
 			});
 		}
 	});
-}
+};
 
 const getKeys = function(con, album, callback) {
 	if (album != null && typeof album != 'string') {
@@ -194,9 +200,31 @@ const getKeys = function(con, album, callback) {
 			return;
 		}
 	});
-}
+};
 
-filterImages = function(imags) {
+const createConn = () => {
+	const conn = mysql.createConnection({
+		host: process.env.MYSQL_HOST,
+		user: process.env.MYSQL_USER,
+		password: process.env.MYSQL_PW,
+		database: process.env.MYSQL_DB
+	});
+	
+	conn.on('error', err => {
+		console.error("Error during DB connection:", err);
+	});
+
+	conn.connect(cerr => {
+		if (cerr) {
+			console.error(cerr);
+			throw cerr;
+		}
+	});
+	
+	return conn;
+};
+
+const filterImages = imags => {
 	return imags.filter( elem =>
 		typeof elem == 'string' && (
 		elem.toLowerCase().endsWith('.jpg') ||
@@ -206,15 +234,24 @@ filterImages = function(imags) {
 		elem.toLowerCase().endsWith('.tiff')
 		)
 	);
-}
+};
+
+const defaultMeta = () => {
+	return {
+		"title": "Unknown Album",
+		"description": "meta.json was not found within the album."
+	};
+};
 
 module.exports = {
 	String,
+	createConn,
 	filterImages,
+	defaultMeta,
 	verifyKey,
 	getKeys,
 	createKey,
 	updateKey,
 	revokeKey,
 	deleteKey
-}
+};

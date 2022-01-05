@@ -15,8 +15,8 @@ body
 		.container.album.py-5
 			.row
 				each file in photos
-					div.item.col-md-3.border(data-src=`${gallery_path}/${file}`)
-						img(src=`${gallery_path}/${file}`)
+					div.item.col-md-3.border(data-src=`${gallery_path}/${file}?key=${key}`)
+						img(src=`${gallery_path}/${file}?key=${key}`)
 
 	include _bs_foot.pug
 
