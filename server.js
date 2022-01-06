@@ -2,6 +2,7 @@ require('dotenv').config({ path: require('find-config')('.env') });
 
 const utils = require('./utils.js');
 const fs = require('fs');
+const requestIp = require('request-ip');
 const express = require('express');
 
 // Init express
@@ -29,7 +30,11 @@ app.set('view engine', 'pug');
 // HTTP Body JSON parser middleware
 app.use(express.json());
 
-unauthorized = (err, res) => {
+// Middleware for handling request ip
+app.use(requestIp.mw());
+
+// Define a generic way of responding to unauthorized requests
+const unauthorized = (err, res) => {
 	return res
 		.status(401)
 		.send("Invalid auth key provided." +
@@ -38,12 +43,13 @@ unauthorized = (err, res) => {
 			);
 };
 
+// Initiate a DB connection pool for accessing the DB consistently & reliably
 const dbPool = utils.createDbPool();
 
 app.get('/', (req, res) => {
-	// console.log("REQ PATH:", req.path);
-	// console.log("REQ QUERY:", req.query);
-	// console.log("REQ PARAMS:", req.params);
+	console.info(`GET ${req.path} [${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
 
 	utils.verifyKey(dbPool, '/', req.query.key, (err, ok) => {
 		if (err || !ok) {
@@ -61,9 +67,9 @@ app.get('/', (req, res) => {
 });
 
 app.get('/management', (req, res) => {
-	// console.log("REQ PATH:", req.path);
-	// console.log("REQ QUERY:", req.query);
-	// console.log("REQ PARAMS:", req.params);
+	console.info(`GET ${req.path} [${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
 
 	utils.verifyKey(dbPool, '/management', req.query.key, (err, ok) => {
 		if (err || !ok) {
@@ -87,10 +93,10 @@ app.get('/management', (req, res) => {
 });
 
 app.post('/management', (req, res) => {
-	// console.log("REQ PATH:", req.path);
-	// console.log("REQ QUERY:", req.query);
-	// console.log("REQ BODY:", req.body);
-	// console.log("REQ PARAMS:", req.params);
+	console.info(`POST ${req.path} [${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
+	console.log("REQ BODY:", req.body);
 
 	utils.verifyKey(dbPool, '/management', req.body.key, (err, ok) => {
 		if (err || !ok) {
@@ -168,7 +174,8 @@ app.post('/management', (req, res) => {
 });
 
 app.get(photo_url + '/*' + '/:photo', (req, res) => {
-	// console.log("REQ PATH:", req.path);
+	// Log flood
+	// console.info(`GET ${req.path} [${req.clientIp}]`);
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
@@ -179,6 +186,7 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 	// We can first verify the key since it does NOT consume in here
 	utils.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
 		if (err || !ok) {
+			console.info(`GET ${req.path} [${req.clientIp}]`);
 			console.error(err);
 			unauthorized(err, res);
 		}
@@ -187,6 +195,7 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 				if (e) {
 					res.sendFile(photo_file);
 				} else {
+					console.info(`GET ${req.path} [${req.clientIp}]`);
 					res.status(404).send("Requested photo was not found.");
 				}
 			});
@@ -195,9 +204,9 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 });
 
 app.get('/:url', (req, res) => {
-	// console.log("REQ PATH:", req.path);
-	// console.log("REQ QUERY:", req.query);
-	// console.log("REQ PARAMS:", req.params);
+	console.info(`GET ${req.path} [${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
 
 	const url = '/' + req.params.url;
 	const target_url = photo_url + url;
@@ -242,6 +251,14 @@ app.get('/:url', (req, res) => {
 			res.status(404).send("The album you were looking for was not found. Please double check the URL.");
 		}
 	});
+});
+
+app.get("*", (req, res) => {
+	console.info(`GET ${req.path} [FROM: ${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
+
+	res.status(404).send("Page not found.");
 });
 
 app.listen(port, host, () => {
