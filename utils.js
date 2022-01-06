@@ -209,10 +209,6 @@ const createConn = () => {
 		password: process.env.MYSQL_PW,
 		database: process.env.MYSQL_DB
 	});
-	
-	conn.on('error', err => {
-		console.error("Error during DB connection:", err);
-	});
 
 	conn.connect(cerr => {
 		if (cerr) {

@@ -38,12 +38,12 @@ unauthorized = (err, res) => {
 			);
 };
 
-const dbConnection = utils.createConn();
-
 app.get('/', (req, res) => {
 	// console.log("REQ PATH:", req.path);
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
+
+	const dbConnection = utils.createConn();
 
 	utils.verifyKey(dbConnection, '/', req.query.key, (err, ok) => {
 		if (err || !ok) {
@@ -64,6 +64,8 @@ app.get('/management', (req, res) => {
 	// console.log("REQ PATH:", req.path);
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
+
+	const dbConnection = utils.createConn();
 
 	utils.verifyKey(dbConnection, '/management', req.query.key, (err, ok) => {
 		if (err || !ok) {
@@ -91,6 +93,8 @@ app.post('/management', (req, res) => {
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ BODY:", req.body);
 	// console.log("REQ PARAMS:", req.params);
+
+	const dbConnection = utils.createConn();
 
 	utils.verifyKey(dbConnection, '/management', req.body.key, (err, ok) => {
 		if (err || !ok) {
@@ -172,6 +176,8 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
+	const dbConnection = utils.createConn();
+
 	const album_url = '/' + req.params['0'];
 	const file_url = '/' + req.params.photo;
 	const photo_file = photo_path + album_url + file_url;
@@ -198,6 +204,8 @@ app.get('/:url', (req, res) => {
 	// console.log("REQ PATH:", req.path);
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
+
+	const dbConnection = utils.createConn();
 
 	const url = '/' + req.params.url;
 	const target_url = photo_url + url;
