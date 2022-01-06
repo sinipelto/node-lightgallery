@@ -10,7 +10,7 @@ const host = process.env.NODE_HOST;
 const port = process.env.NODE_PORT;
 
 const photo_url = process.env.PHOTOS_URL;
-const photo_path = __dirname + process.env.PHOTOS_PATH;
+const photo_path = process.env.PHOTOS_PATH;
 
 // Load static assets
 app.use('/favicon.ico', express.static(__dirname + process.env.FAVICON_PATH));
@@ -38,14 +38,14 @@ unauthorized = (err, res) => {
 			);
 };
 
+const dbPool = utils.createDbPool();
+
 app.get('/', (req, res) => {
 	// console.log("REQ PATH:", req.path);
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
-	const dbConnection = utils.createConn();
-
-	utils.verifyKey(dbConnection, '/', req.query.key, (err, ok) => {
+	utils.verifyKey(dbPool, '/', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -65,15 +65,13 @@ app.get('/management', (req, res) => {
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
-	const dbConnection = utils.createConn();
-
-	utils.verifyKey(dbConnection, '/management', req.query.key, (err, ok) => {
+	utils.verifyKey(dbPool, '/management', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
 		}
 		else {
-			utils.getKeys(dbConnection, null, (err, data) => {
+			utils.getKeys(dbPool, null, (err, data) => {
 				if (err || !data) {
 					console.error(err);
 					res.status(500).send("Failed to get keys from server.");
@@ -94,9 +92,7 @@ app.post('/management', (req, res) => {
 	// console.log("REQ BODY:", req.body);
 	// console.log("REQ PARAMS:", req.params);
 
-	const dbConnection = utils.createConn();
-
-	utils.verifyKey(dbConnection, '/management', req.body.key, (err, ok) => {
+	utils.verifyKey(dbPool, '/management', req.body.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -109,7 +105,7 @@ app.post('/management', (req, res) => {
 
 				switch (action) {
 					case "get":
-						utils.getKeys(dbConnection, data.album, (err, result) => {
+						utils.getKeys(dbPool, data.album, (err, result) => {
 							if (err || !result) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to get keys:" + err);
@@ -119,7 +115,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "new":
-						utils.createKey(dbConnection, data.album, data.usages, (err, ok) => {
+						utils.createKey(dbPool, data.album, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to add new key: " + err);
@@ -129,7 +125,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "update":
-						utils.updateKey(dbConnection, target_id, data.usages, (err, ok) => {
+						utils.updateKey(dbPool, target_id, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to modify key:" + err);
@@ -139,7 +135,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "revoke":
-						utils.revokeKey(dbConnection, target_id, (err, ok) => {
+						utils.revokeKey(dbPool, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to revoke key:" + err);
@@ -149,7 +145,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "delete":
-						utils.deleteKey(dbConnection, target_id, (err, ok) => {
+						utils.deleteKey(dbPool, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to delete key:" + err);
@@ -171,8 +167,6 @@ app.post('/management', (req, res) => {
 	});	
 });
 
-const assetConnection = utils.createConn();
-
 app.get(photo_url + '/*' + '/:photo', (req, res) => {
 	// console.log("REQ PATH:", req.path);
 	// console.log("REQ QUERY:", req.query);
@@ -183,7 +177,7 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 	const photo_file = photo_path + album_url + file_url;
 
 	// We can first verify the key since it does NOT consume in here
-	utils.verifyKey(assetConnection, album_url, req.query.key, (err, ok) => {
+	utils.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -205,15 +199,13 @@ app.get('/:url', (req, res) => {
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
-	const dbConnection = utils.createConn();
-
 	const url = '/' + req.params.url;
 	const target_url = photo_url + url;
 	const target_path = photo_path + url;
 
 	fs.exists(target_path, e => {
 		if (e) {
-			utils.verifyKey(dbConnection, url, req.query.key, (err, ok) => {
+			utils.verifyKey(dbPool, url, req.query.key, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					unauthorized(err, res);

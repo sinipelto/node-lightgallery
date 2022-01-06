@@ -16,44 +16,44 @@ const verifyKey = function(con, album, key, callback, consume = true) {
 
 	const qry_get = `SELECT id, album, TO_BASE64(HEX(value)) AS value, usages, created FROM token WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0;`;
 	
-	try {
-		con.query(qry_get, [album, key], (qerr, res) => {
-			if (qerr) {
-				console.error(qerr);
-				callback(qerr, false);
-				return;
-			}
-			
-			// No keys found with query
-			if (res.length <= 0) {
-				console.error("Mathing key not found.");
-				callback("KEY_MATCH_NOT_FOUND", false);
-			} else {
-				if (consume) {
-					row = res[0];
-					updateKey(con, row.id, row.usages - 1, (err, ok) => {
-						if (err || !ok) {
-							console.error(err);
-							callback("UPDATE_USAGES_FAILED", false);
-							return;
-						} else if (row.value == key) {
-							callback(null, true);
-							return;
-						} else {
-							// This should never occur
-							callback("KEY_VERIFICATION_MISMATCH", false);
-							return;
-						}
-					});
-				} else {
-					callback(null, true);					
+	con.query(qry_get, [album, key], (qerr, res) => {
+		if (qerr) {
+			console.error(qerr);
+			callback(qerr, false);
+			return;
+		}
+		
+		// No keys found with query
+		if (res.length <= 0) {
+			console.error("Mathing key not found.");
+			callback("KEY_MATCH_NOT_FOUND", false);
+			return;
+		}
+
+		if (consume) {
+			row = res[0];
+
+			updateKey(con, row.id, row.usages - 1, (err, ok) => {
+				if (err || !ok) {
+					console.error(err);
+					callback("UPDATE_USAGES_FAILED", false);
+					return;
 				}
-			}
-		});
-	} catch (err) {
-		console.error("Caught exception:", err);
-		callback(err, false);
-	}
+
+				if (row.value == key) {
+					callback(null, true);
+					return;
+				}
+
+				// This should never occur
+				callback("KEY_VERIFICATION_MISMATCH", false);
+				return;
+			});
+			return;
+		}
+
+		callback(null, true);
+	});
 };
 
 const createKey = function(con, album, usages, callback) {
@@ -66,31 +66,17 @@ const createKey = function(con, album, usages, callback) {
 		callback("INVALID_USAGES", false);
 		return;
 	}
-	
-	const qry_get = `SELECT id, album, TO_BASE64(HEX(value)) AS value, usages, created FROM token WHERE ID = ?;`;
+
 	const qry_new = `INSERT INTO token (album, usages) VALUES (?, ?);`;
 
-		con.query(qry_new, [album, (usages != null && usages >= 0) ? usages : 1], (qerr, res) => {
-			if (qerr) {
-				console.error(qerr);
-				callback(qerr, false);
-				return;
-			}
-			
-			con.query(qry_get, [res.insertId], (qerr, res) => {
-				if (qerr) {
-					console.error(qerr);
-					callback("GET_NEW_KEY_FAILED", false);
-					return;
-				}
-				if (res.length <= 0) {
-					console.error("Mathing key not found.");
-					callback("NEW_KEY_NOT_FOUND", false);
-					return;
-				} else {
-					callback(null, true);
-				}
-			});
+	con.query(qry_new, [album, (usages != null && usages >= 0) ? usages : 1], (qerr, res) => {
+		if (qerr) {
+			console.error(qerr);
+			callback(qerr, false);
+			return;
+		}
+
+		callback(null, true);
 	});
 };
 
@@ -105,34 +91,16 @@ const updateKey = function(con, id, usages, callback) {
 		return;
 	}
 
-	const qry_get = `SELECT id, album, TO_BASE64(HEX(value)) AS value, usages, created FROM token WHERE id = ?;`;
 	const qry_upd = `UPDATE token SET usages = ? WHERE id = ?;`;
-	
-	con.query(qry_get, [id], (qerr, res) => {
+
+	con.query(qry_upd, [usages, id], (qerr, res) => {
 		if (qerr) {
 			console.error(qerr);
-			callback(qerr, false);
+			callback("UPDATE_FAILED", false);
 			return;
 		}
-		
-		if (res.length <= 0) {
-			console.error("Mathing key not found.");
-			callback("NOT_FOUND", false);
-			return;
-		} else {
-			row = res[0];
-			con.query(qry_upd, [usages, row.id], (qerr, res) => {
-				if (qerr) {
-					console.error(qerr);
-					callback("UPDATE_FAILED", false);
-					return;
-					
-				} else {
-					callback(null, true);
-					return;
-				}
-			});
-		}
+
+		callback(null, true);
 	});
 };
 
@@ -160,19 +128,20 @@ const deleteKey = function(con, id, callback) {
 			console.error("Key not found.");
 			callback("KEY_NOT_FOUND", false);
 			return;
-		} else {
-			row = res[0];
-			con.query(qry_del, [row.id], (qerr, res) => {
-				if (qerr) {
-					console.error(qerr);
-					callback("DELETE_FAILED", false);
-					return;
-					
-				} else {
-					callback(null, true);
-				}
-			});
-		}
+		} 
+
+		row = res[0];
+
+		con.query(qry_del, [row.id], (qerr, res) => {
+			if (qerr) {
+				console.error(qerr);
+				callback("DELETE_FAILED", false);
+				return;
+				
+			}
+
+			callback(null, true);
+		});
 	});
 };
 
@@ -195,14 +164,13 @@ const getKeys = function(con, album, callback) {
 			console.warning("No keys found.");
 			callback(null, []);
 			return;
-		} else {
-			callback(null, res);
-			return;
 		}
+
+		callback(null, res);
 	});
 };
 
-const createConn = () => {
+const createDbConnection = () => {
 	const conn = mysql.createConnection({
 		host: process.env.MYSQL_HOST,
 		user: process.env.MYSQL_USER,
@@ -218,6 +186,18 @@ const createConn = () => {
 	});
 	
 	return conn;
+};
+
+const createDbPool = () => {
+	const pool = mysql.createPool({
+		connectionLimit: 100,
+		host: process.env.MYSQL_HOST,
+		user: process.env.MYSQL_USER,
+		password: process.env.MYSQL_PW,
+		database: process.env.MYSQL_DB
+	});
+
+	return pool;
 };
 
 const filterImages = imags => {
@@ -241,7 +221,8 @@ const defaultMeta = () => {
 
 module.exports = {
 	String,
-	createConn,
+	createDbConnection,
+	createDbPool,
 	filterImages,
 	defaultMeta,
 	verifyKey,
