@@ -5,19 +5,19 @@ body
 	#main
 		section.jumbotron.text-center
 			.container
-				h1.jumbotron-heading Album Token Management:
+				h1.jumbotron-heading Albums Management:
 			p.lead.text-muted.
 				Create, update, revoke access keys to different albums here.
 		br
 		br
 
 		.container.text-center.col-auto
-			h2 Current keys:
+			h2 Token Management:
 			.table-responsive
 				table.table.table-striped.table-lg
 					thead
 						tr
-							th ID 
+							th ID
 							th Album
 							th Value
 							th Usages
@@ -25,17 +25,18 @@ body
 							th
 							th
 					tbody
-						each entry in data
+						each token in data
 							tr
-								th(scope="row")= entry.id
-								td= entry.album
-								td= entry.value
-								td= entry.usages
-								td= entry.created.toLocaleString()
+								th(scope="row")= token.id
 								td
-									button(onclick=`revokeKey(${entry.id});`).btn.btn-warning Revoke
+									a(href=`${token.album}?key=${token.value}`) #{token.album}
+								td= token.value
+								td= token.usages
+								td= token.created.toLocaleString()
 								td
-									button(onclick=`deleteKey(${entry.id});`).btn.btn-danger Delete
+									button(onclick=`revokeKey(${token.id});`).btn.btn-warning Revoke
+								td
+									button(onclick=`deleteKey(${token.id});`).btn.btn-danger Delete
 
 			br
 			br
@@ -44,7 +45,7 @@ body
 			.container.text-center
 				.row
 					.col
-						h1 Create a new key:
+						h1 Create new token:
 						label(for="keyAlbumCreate") Album name:
 						br
 						input#keyAlbumCreate(type="text")
@@ -59,8 +60,8 @@ body
 						br
 						button(onclick="createKey();").btn.btn-primary Create New Key
 					.col
-						h1 Update an existing key:
-						label(for="keyIdUpdate") Key ID:
+						h1 Update an existing token:
+						label(for="keyIdUpdate") Token ID:
 						br
 						input#keyIdUpdate(type="text")
 						p#errorIdUpdate
@@ -89,8 +90,6 @@ body
 					'target_id': id
 				})
 			}).then(res => {
-				//- console.log("RESP:", res, res.text());
-				//- console.log("STATUS:", res.status, res.statusText);
 				location.reload();
 			});
 		}
@@ -107,8 +106,6 @@ body
 					'target_id': id
 				})
 			}).then(res => {
-				//- console.log("RESP:", res, res.text());
-				//- console.log("STATUS:", res.status, res.statusText);
 				location.reload();
 			});
 		}
@@ -185,8 +182,6 @@ body
 					}
 				})
 			}).then(res => {
-				//- console.log("RESP:", res, res.text());
-				//- console.log("STATUS:", res.status, res.statusText);
 				location.reload();
 			});
 		}
@@ -253,8 +248,6 @@ body
 					}
 				})
 			}).then(res => {
-				//- console.log("RESP:", res, res.text());
-				//- console.log("STATUS:", res.status, res.statusText);
 				location.reload();
 			});
 		}
