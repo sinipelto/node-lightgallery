@@ -1,6 +1,9 @@
 require('dotenv').config({ path: require('find-config')('.env') });
 
 const utils = require('./utils.js');
+const dbManager = require('./db.js');
+const tokenManager = require('./token.js');
+
 const fs = require('fs');
 const requestIp = require('request-ip');
 const express = require('express');
@@ -10,8 +13,22 @@ const app = express();
 const host = process.env.NODE_HOST;
 const port = process.env.NODE_PORT;
 
+if (!host || !port) {
+	throw "Host or port not set. Check env vars are set.";
+}
+
 const photo_url = process.env.PHOTOS_URL;
 const photo_path = process.env.PHOTOS_PATH;
+
+if (!photo_url || !photo_path) {
+	throw "Invalid photo url or photo path. Check env vars are set.";
+}
+
+const db_provider = process.env.DATABASE_PROVIDER;
+
+if (!db_provider) {
+	throw "Invalid database provider. Check env var is set.";
+}
 
 // Load static assets
 app.use('/favicon.ico', express.static(__dirname + process.env.FAVICON_PATH));
@@ -43,15 +60,18 @@ const unauthorized = (err, res) => {
 			);
 };
 
+// Init the DB (create tables, etc.) for first use
+dbManager.initDatabaseAsync(db_provider);
+
 // Initiate a DB connection pool for accessing the DB consistently & reliably
-const dbPool = utils.createDbPool();
+const dbPool = dbManager.createDbPool();
 
 app.get('/', (req, res) => {
 	console.info(`GET ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	utils.verifyKey(dbPool, '/', req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, '/', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -71,13 +91,13 @@ app.get('/management', (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	utils.verifyKey(dbPool, '/management', req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, '/management', req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
 		}
 		else {
-			utils.getKeys(dbPool, null, (err, data) => {
+			tokenManager.getKeys(dbPool, null, (err, data) => {
 				if (err || !data) {
 					console.error(err);
 					res.status(500).send("Failed to get keys from server.");
@@ -98,7 +118,7 @@ app.post('/management', (req, res) => {
 	console.log("REQ PARAMS:", req.params);
 	console.log("REQ BODY:", req.body);
 
-	utils.verifyKey(dbPool, '/management', req.body.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, '/management', req.body.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -111,7 +131,7 @@ app.post('/management', (req, res) => {
 
 				switch (action) {
 					case "get":
-						utils.getKeys(dbPool, data.album, (err, result) => {
+						tokenManager.getKeys(dbPool, data.album, (err, result) => {
 							if (err || !result) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to get keys:" + err);
@@ -121,7 +141,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "new":
-						utils.createKey(dbPool, data.album, data.usages, (err, ok) => {
+						tokenManager.createKey(dbPool, data.album, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to add new key: " + err);
@@ -131,7 +151,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "update":
-						utils.updateKey(dbPool, target_id, data.usages, (err, ok) => {
+						tokenManager.updateKey(dbPool, target_id, data.usages, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to modify key:" + err);
@@ -141,7 +161,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "revoke":
-						utils.revokeKey(dbPool, target_id, (err, ok) => {
+						tokenManager.revokeKey(dbPool, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to revoke key:" + err);
@@ -151,7 +171,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					case "delete":
-						utils.deleteKey(dbPool, target_id, (err, ok) => {
+						tokenManager.deleteKey(dbPool, target_id, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to delete key:" + err);
@@ -184,7 +204,7 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 	const photo_file = photo_path + album_url + file_url;
 
 	// We can first verify the key since it does NOT consume in here
-	utils.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.info(`GET ${req.path} [${req.clientIp}]`);
 			console.error(err);
@@ -214,7 +234,7 @@ app.get('/:url', (req, res) => {
 
 	fs.exists(target_path, e => {
 		if (e) {
-			utils.verifyKey(dbPool, url, req.query.key, (err, ok) => {
+			tokenManager.verifyKey(dbPool, url, req.query.key, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					unauthorized(err, res);
@@ -228,17 +248,23 @@ app.get('/:url', (req, res) => {
 							fs.readFile(target_path + "/meta.json", (err, file) => {
 								var meta;
 								
-								if (err) {
-									console.error("Failed to read album META:", err);
+								// Try to read meta.json
+								// If read fails, or file is malformed, fallback to default meta
+								try {
+									if (err) {
+										console.error("Failed to read album META:", err);
+										throw err;
+									} else {
+										meta = JSON.parse(file);
+									}
+								} catch (error) {
 									meta = utils.defaultMeta();
-								} else {
-									meta = JSON.parse(file);
 								}
 	
 								res.render('gallery', {
 									is_index: false,
 									gallery_path: target_url,
-									photos: utils.filterImages(files),
+									photos: utils.filterMedia(files),
 									key: req.query.key,
 									meta
 								});
