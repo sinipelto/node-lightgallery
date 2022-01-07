@@ -29,7 +29,7 @@ body
 							tr
 								th(scope="row")= token.id
 								td
-									a(href=`${token.album}?key=${token.value}`) #{token.album}
+									a(href=`${token.album}?key=${token.value}`, target="_blank") #{token.album}
 								td= token.value
 								td= token.usages
 								td= token.created.toLocaleString()
