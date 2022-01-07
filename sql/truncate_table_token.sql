@@ -1,0 +1,3 @@
+USE db;
+
+TRUNCATE TABLE token;
