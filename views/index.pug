@@ -1,5 +1,9 @@
+// Header with generic HMTL stuff
 include _header.pug
-include _bs_head.pug
+
+// Libs
+include _jq.pug
+include _bs.pug
 
 body
 	section.jumbotron.text-center
@@ -15,5 +19,3 @@ body
 					.col-md-4
 						p
 							a(href=`${alb}`) #{alb}
-
-	include _bs_foot.pug

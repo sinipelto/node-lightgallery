@@ -1,5 +1,9 @@
+// Header with generic HMTL stuff
 include _header.pug
-include _bs_head.pug
+
+// Libs
+include _jq.pug
+include _bs.pug
 
 	link(type="text/css", rel="stylesheet", href="css/lightgallery-bundle.min.css")
 	link(type="text/css", rel="stylesheet", href="static/style.css")
@@ -17,8 +21,6 @@ body
 				each file in photos
 					div.item.col-md-3.border(data-src=`${gallery_path}/${file}?key=${key}`)
 						img(src=`${gallery_path}/${file}?key=${key}`)
-
-	include _bs_foot.pug
 
 	// Lightgallery main
 	script(src="js/lightgallery.min.js")

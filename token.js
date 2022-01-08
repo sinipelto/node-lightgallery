@@ -129,7 +129,7 @@ module.exports.updateKey = (con, id, usages, callback) => {
 			return;
 		}
 
-		if (!res || res.length <= 0) {
+		if (!res || res.length <= 0 || res.affectedRows <= 0) {
 			console.error("ERROR: Key to update was not found with ID " + id);
 			callback("KEY_NOT_FOUND", false);
 			return;
@@ -150,34 +150,23 @@ module.exports.deleteKey = (con, id, callback) => {
 		return;
 	}
 
-	const qry_get = `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE id = ?;`;
 	const qry_del = `DELETE FROM ${TABLE} WHERE id = ?;`;
 
-	con.query(qry_get, [id], (qerr, res) => {
+	con.query(qry_del, [id], (qerr, res) => {
 		if (qerr) {
 			console.error(qerr);
-			callback(qerr, false);
+			callback("DELETE_FAILED", false);
 			return;
+
 		}
-		
-		if (!res || res.length <= 0) {
+
+		if (!res || res.length <= 0 || res.affectedRows <= 0) {
 			console.error("ERROR: Key not found.");
 			callback("KEY_NOT_FOUND", false);
 			return;
-		} 
+		}
 
-		row = res[0];
-
-		con.query(qry_del, [row.id], (qerr, res) => {
-			if (qerr) {
-				console.error(qerr);
-				callback("DELETE_FAILED", false);
-				return;
-				
-			}
-
-			callback(null, true);
-		});
+		callback(null, true);
 	});
 };
 

@@ -1,9 +1,17 @@
+// Header with generic HMTL stuff
 include _header.pug
-include _bs_head.pug
+
+// Libs
+include _jq.pug
+include _bs.pug
 
 body
 	#main
 		section.jumbotron.text-center
+			#errorMsg.alert.alert-danger.alert-dismissible.fade.show(role="alert", style="display: none;")
+				strong#errorMsgText Hello!
+				button.btn-close(type="button", data-bs-dismiss="alert", aria-label="Close")
+
 			.container
 				h1.jumbotron-heading Albums Management:
 			p.lead.text-muted.
@@ -75,187 +83,7 @@ body
 						br
 						button(onclick="updateKey();").btn.btn-secondary Update Key
 
-	include _bs_foot.pug
-
 	script(type="text/javascript").
-		const errorIdUpdate = document.getElementById('errorIdUpdate');
-		const errorUsageUpdate = document.getElementById('errorUsageUpdate');
+		const AUTH_KEY = "#{key}";
 
-		const inputIdUpdate = document.getElementById('keyIdUpdate');
-		const inputUsageUpdate = document.getElementById('keyUsageUpdate');
-
-		const errorAlbumCreate = document.getElementById('errorAlbumCreate');
-		const errorUsageCreate = document.getElementById('errorUsageCreate');
-
-		const inputAlbumCreate = document.getElementById('keyAlbumCreate');
-		const inputUsageCreate = document.getElementById('keyUsageCreate');
-		
-		const respHandler = (res) => {
-			location.reload();
-		};
-
-		const catchHandler = (err) => {
-			console.error("ERROR during fetch:", err);
-		}
-
-		const revokeKey = id => {
-			console.log("REVOKE KEY CALLED.");
-			
-			fetch("/management", {
-				'method': 'POST',
-				'headers': {'Content-Type': 'application/json'},
-				'body': JSON.stringify({
-					'key': '#{key}',
-					'action': 'revoke',
-					'target_id': id
-				})
-			})
-			.then(respHandler)
-			.catch(catchHandler);
-		}
-
-		const deleteKey = id => {
-			console.log("DELETE KEY CALLED.");
-			
-			fetch("/management", {
-				'method': 'POST',
-				'headers': {'Content-Type': 'application/json'},
-				'body': JSON.stringify({
-					'key': '#{key}',
-					'action': 'delete',
-					'target_id': id
-				})
-			})
-			.then(respHandler)
-			.catch(catchHandler);
-		}
-
-		const updateKey = () => {
-			console.log("UPDATE KEY CALLED.");
-
-			// Clear old error messages
-			errorIdUpdate.innerText = "";
-			errorUsageUpdate.innerText = "";
-
-			if (inputIdUpdate == null || inputIdUpdate.value == null) {
-				const err = "Could not read ID input!";
-				errorIdUpdate.innerText = err;
-				throw err;
-			}
-
-			if (inputUsageUpdate == null || inputUsageUpdate.value == null) {
-				const err = "Could not read usage count input!";
-				errorUsageUpdate.innerText = err;
-				throw err;
-			}
-
-			if (typeof inputIdUpdate.value != 'string' || inputIdUpdate.value == '') {
-				const err = "Invalid or empty value for ID!";
-				errorIdUpdate.innerText = err;
-				throw err;
-			}
-
-			if (typeof inputUsageUpdate.value != 'string' || inputUsageUpdate.value == '') {
-				const err = "Invalid or empty value for usage count!";
-				errorUsageUpdate.innerText = err;
-				throw err;
-			}
-
-			if (isNaN(inputIdUpdate.value)) {
-				const err = "ID must be a number!";
-				errorIdUpdate.innerText = err;
-				throw err;
-			} else if (inputIdUpdate.value < 0) {
-				const err = "ID must have value greater than or equal to zero (>= 0)!";
-				errorIdUpdate.innerText = err;
-				throw err;
-			}
-
-			if (isNaN(inputUsageUpdate.value)) {
-				const err = "Usage count must be a number!";
-				errorUsageUpdate.innerText = err;
-				throw err;
-			} else if (inputUsageUpdate.value < 0) {
-				const err = "Usage count must have value greater than or equal to zero (>= 0)!";
-				errorUsageUpdate.innerText = err;
-				throw err;
-			}
-
-			console.log("ID:", inputIdUpdate.value);
-			console.log("USAGE:", inputUsageUpdate.value);
-
-			fetch("/management", {
-				'method': 'POST',
-				'headers': {'Content-Type': 'application/json'},
-				'body': JSON.stringify({
-					'key': '#{key}',
-					'action': 'update',
-					'target_id': Number(inputIdUpdate.value),
-					'data': {
-						'usages': Number(inputUsageUpdate.value)
-					}
-				})
-			})
-			.then(respHandler)
-			.catch(catchHandler);
-		}
-
-		const createKey = () => {
-			console.log("CREATE KEY CALLED.");
-
-			// Clear old error messages
-			errorAlbumCreate.innerText = "";
-			errorUsageCreate.innerText = "";
-
-			if (inputAlbumCreate == null || inputAlbumCreate.value == null) {
-				const err = "Could not read album name input!";
-				errorAlbumCreate.innerText = err;
-				throw err;
-			}
-
-			if (inputUsageCreate == null || inputUsageCreate.value == null) {
-				const err = "Could not read usage count input!";
-				errorUsageCreate.innerText = err;
-				throw err;
-			}
-
-			if (typeof inputAlbumCreate.value != 'string' || inputAlbumCreate.value == '') {
-				const err = "Invalid or empty value for album name!";
-				errorAlbumCreate.innerText = err;
-				throw err;
-			}
-
-			if (typeof inputUsageCreate.value != 'string' || inputUsageCreate.value == '') {
-				const err = "Invalid or empty value for usage count!";
-				errorUsageCreate.innerText = err;
-				throw err;
-			}
-
-			if (isNaN(inputUsageCreate.value)) {
-				const err = "Usage count must be a number!";
-				errorUsageCreate.innerText = err;
-				throw err;
-			} else if (inputUsageCreate.value < 0) {
-				const err = "Usage count must have value greater than or equal to zero (>= 0)!";
-				errorUsageCreate.innerText = err;
-				throw err;
-			}
-
-			console.log("ALBUM:", inputAlbumCreate.value);
-			console.log("USAGE:", inputUsageCreate.value);
-
-			fetch("/management", {
-				'method': 'POST',
-				'headers': {'Content-Type': 'application/json'},
-				'body': JSON.stringify({
-					'key': '#{key}',
-					'action': 'new',
-					'data': {
-						'album': (inputAlbumCreate.value.startsWith('/')) ? inputAlbumCreate.value : '/' + inputAlbumCreate.value,
-						'usages': Number(inputUsageCreate.value)
-					}
-				})
-			})
-			.then(respHandler)
-			.catch(catchHandler);
-		}
+	script(type="text/javascript", src="/static/management.js")
