@@ -50,10 +50,13 @@ To start right off, just launch the: [`server.js`](server.js):
 ```bash
 node server.js
 ```
+
+(
 OR with NPM:
 ```bash
 npm start
 ```
+)
 
 (Optional) Create a service for the application to ensure its running and to get proper logging/journaling:
 
@@ -82,7 +85,7 @@ User=USER
 ExecStart=/usr/bin/env npm start
 ```
 
-```
+```text
 (USER => e.g. root/user with read access to server and gallery directory)
 ```
 
@@ -104,11 +107,13 @@ Finally, start the service:
 (sudo / root user)
 sudo systemctl start node-gallery
 ```
-OR with service:
+(
+    OR with service CLI:
 ```bash
 (sudo / root user)
 sudo service node-gallery start
 ```
+)
 
 ## Usage instructions
 
@@ -119,7 +124,7 @@ The directory path for the albums is set in the `.env` file. Assuming it to be s
 Ensure the directory exists:
 
 ```bash
-dir="/path/to/albums"; [ ! -f "$dir" ] && mkdir "$dir" && echo "Album dir created." || "Album dir exists."
+dir="/path/to/albums"; [ ! -f "$dir" ] && (mkdir "$dir" && echo "Album dir created." || echo "ERROR: Failed to create album directory.") || echo "Album dir already exists."
 ```
 
 Now, add an album to the albums directory. E.g. album `test-album` would be a directory in `/path/to/albums/test-album`
@@ -151,20 +156,13 @@ With a following format:
 
 Next, you need to generate a token for the album to access it through the web server.
 
-First, ensure you have access key to the management page (following example for MySQL):
-
-```sql
-USE database;
-INSERT INTO TOKEN_TABLE (album, usages) VALUES ('/management', 500);
-SELECT album, TO_BASE64(HEX(value)) FROM TOKEN_TABLE WHERE album = '/management' ORDER BY ID DESC LIMIT 1;
-```
-
-IN THE FUTURE RELEASES: The initial key for management page is generated on the first launch of the server.
+The initial key for management page is generated on the first successful launch of the server.
 The key resides in the file `tokens.json`. Get the token value from the file:
 
 ```bash
-cat init-tokens.json
+cat tokens.json
 ```
+
 ```json
 [
     {
@@ -175,16 +173,18 @@ cat init-tokens.json
 ]
 ```
 
-The statement can be executed e.g. with the mysql cli:
-
-```bash
-mysql -u USER -p -e "<PREVIOUS SQL STATEMENT HERE>"
-```
-
 Go to the management page: `http(s)://server-url/management?key=<TOKEN_VALUE>`.
 
-From here you can manage (create, edit, delete, disable) all of the access tokens (including management and index page keys).
+OR to create the URL programmatically:
 
-Generate a new token for the just created album (see the 'Create new key' section).
+```bash
+echo "http(s)://server-url/management?key=$(cat tokens.json | grep "management" -m1 -A1 | tr { '\n' | tr , '\n' | tr } '\n' | grep "value" | awk  -F'"' '{print $4}')"
+```
 
-The new album is now accessible: `http(s)://server-url/test-album?key=<TOKEN_FOR_THE_ALBUM>`.
+From the Management page you can manage (create, edit, delete, disable) all of the access tokens (including management and index page keys).
+
+CAUTION: Never delete the last known active key to the /management route or you **WILL LOSE ACCESS to the management interface** until a new key is manually created into the DB / the db is reset (table deleted).
+
+Next, generate a new token for the just created album (see the 'Create new key' section).
+
+The new album with all the photos included in the album directory is now accessible in: `http(s)://server-url/test-album?key=<TOKEN_FOR_THE_ALBUM>`.
