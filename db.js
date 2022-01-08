@@ -50,7 +50,7 @@ module.exports.createDbPool = () => {
 };
 
 // Initialize the database for the current db provider
-module.exports.initDatabaseAsync = (provider) => {
+module.exports.initDatabase = (provider) => {
     if (provider == "mysql") {
         // foreach table in required_tables, do
 

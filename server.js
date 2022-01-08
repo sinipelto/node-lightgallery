@@ -7,6 +7,7 @@ const tokenManager = require('./token.js');
 const fs = require('fs');
 const requestIp = require('request-ip');
 const express = require('express');
+const { exec } = require('child_process');
 
 // Init express
 const app = express();
@@ -29,6 +30,21 @@ const db_provider = process.env.DATABASE_PROVIDER;
 if (!db_provider) {
 	throw "Invalid database provider. Check env var is set.";
 }
+
+const serviceName = process.env.SERVICE_NAME;
+
+if (!serviceName) {
+	throw "Invalid service name. Check env var is set.";
+}
+
+const logLineLimit = process.env.LOG_LINE_LIMIT;
+
+if (!logLineLimit) {
+	throw "Invalid log line limit. Check env var is set.";
+}
+
+// Init the DB (create tables, etc.) for first use
+dbManager.initDatabase(db_provider);
 
 // Load static assets
 app.use('/favicon.ico', express.static(__dirname + process.env.FAVICON_PATH));
@@ -60,18 +76,19 @@ const unauthorized = (err, res) => {
 			);
 };
 
-// Init the DB (create tables, etc.) for first use
-dbManager.initDatabaseAsync(db_provider);
-
 // Initiate a DB connection pool for accessing the DB consistently & reliably
 const dbPool = dbManager.createDbPool();
 
-app.get('/', (req, res) => {
+const route_root = '/';
+const route_logs = '/logs';
+const route_management = '/management';
+
+app.get(route_root, (req, res) => {
 	console.info(`GET ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, '/', req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_root, req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -86,12 +103,40 @@ app.get('/', (req, res) => {
 	});
 });
 
-app.get('/management', (req, res) => {
+app.get(route_logs, (req, res) => {
 	console.info(`GET ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, '/management', req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_logs, req.query.key, (err, ok) => {
+		if (err || !ok) {
+			console.error(err);
+			unauthorized(err, res);
+		}
+		else {
+			try {
+				exec(`journalctl -u ${serviceName} | tail -${logLineLimit}`, (err, stdout, stderr) => {
+					if (err) {
+						console.error("Failed to execute command:", err);
+						res.status(500).send("ERROR: Failed to retrieve logs.");
+					} else {
+						res.send("STDOUT:\n" + stdout + "\n\n" + "STDERR:\n" + stderr);
+					}
+				});
+			} catch (cerr) {
+				console.error("Failed to retrieve logs:", cerr);
+				res.status(500).send("ERROR: Failed to retrieve logs.");
+			}
+		}
+	});
+});
+
+app.get(route_management, (req, res) => {
+	console.info(`GET ${req.path} [${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
+
+	tokenManager.verifyKey(dbPool, route_management, req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -112,13 +157,13 @@ app.get('/management', (req, res) => {
 	});
 });
 
-app.post('/management', (req, res) => {
+app.post(route_management, (req, res) => {
 	console.info(`POST ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 	console.log("REQ BODY:", req.body);
 
-	tokenManager.verifyKey(dbPool, '/management', req.body.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_management, req.body.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -181,7 +226,7 @@ app.post('/management', (req, res) => {
 						});
 						break;
 					default:
-						console.error("POST /management: Unknown action request received.");
+						console.error(`POST ${route_management}: Unknown action request received.`);
 						res.status(400).send("ERROR: Unknown action request received.");
 						break;
 				}
@@ -288,6 +333,6 @@ app.get("*", (req, res) => {
 });
 
 app.listen(port, host, () => {
-	console.log("Server started.");
+	console.info("Server started.");
 	console.log("Listening at http://" + host + ':' + port);
 });
