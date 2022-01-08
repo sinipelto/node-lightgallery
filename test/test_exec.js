@@ -1,3 +1,4 @@
+const utils = require('../utils.js');
 const { exec } = require('child_process');
 
 const serviceName = "node-gallery";
@@ -13,6 +14,9 @@ exec(`journalctl -u ${serviceName} | tail -${logLineLimit}`, (err, stdout, stder
 		//console.log(stdout);
 		//str = str.replace(/(?:\r\n|\r|\n)/g, '<br>');
 
-		console.log(stdout.replace(/(?:\r\n|\r|\n)/g, '<br>'));
+		//console.log(stdout.replace(/(?:\r\n|\r|\n)/g, '<br>'));
+
+		console.log(stdout.leftTrim());
+		console.log(stdout.newLineToHtml());
         }
 });
