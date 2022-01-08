@@ -12,10 +12,10 @@ if (!TABLE) {
     throw "Invalid table name. Check env var is set.";
 }
 
-const validateKey = (key) => !(!key || typeof key != 'string' || key == '' || key.length != TOKEN_LENGTH);
-const validateAlbum = (album) => !(!album || typeof album != 'string' || !album.startsWith('/'));
-const validateId = (id) => !(!id || typeof id != 'number' || isNaN(id) || id < 0);
-const validateUsages = (usages) => !(!usages || typeof usages != 'number' || isNaN(usages) || usages < 0);
+const validateKey = (key) => (key && typeof key == 'string' && key.length == TOKEN_LENGTH);
+const validateAlbum = (album) => (album && typeof album == 'string' && album.startsWith('/'));
+const validateId = (id) => (id && typeof id == 'number' && !isNaN(id) && id >= 0);
+const validateUsages = (usages) => (usages && typeof usages == 'number' && !isNaN(usages) && usages >= 0);
 
 module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 	if (!con) {

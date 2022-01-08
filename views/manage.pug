@@ -78,6 +78,26 @@ body
 	include _bs_foot.pug
 
 	script(type="text/javascript").
+		const errorId = document.getElementById('errorIdUpdate');
+		const errorUsage = document.getElementById('errorUsageUpdate');
+
+		const inputId = document.getElementById('keyIdUpdate');
+		const inputUsage = document.getElementById('keyUsageUpdate');
+
+		const errorAlbum = document.getElementById('errorAlbumCreate');
+		const errorUsage = document.getElementById('errorUsageCreate');
+
+		const inputAlbum = document.getElementById('keyAlbumCreate');
+		const inputUsage = document.getElementById('keyUsageCreate');
+		
+		const respHandler = (res) => {
+			location.reload();
+		};
+
+		const catchHandler = (err) => {
+			console.error("ERROR during fetch:", err);
+		}
+
 		const revokeKey = id => {
 			console.log("REVOKE KEY CALLED.");
 			
@@ -89,9 +109,9 @@ body
 					'action': 'revoke',
 					'target_id': id
 				})
-			}).then(res => {
-				location.reload();
-			});
+			})
+			.then(respHandler)
+			.catch(catchHandler);
 		}
 
 		const deleteKey = id => {
@@ -105,23 +125,17 @@ body
 					'action': 'delete',
 					'target_id': id
 				})
-			}).then(res => {
-				location.reload();
-			});
+			})
+			.then(respHandler)
+			.catch(catchHandler);
 		}
 
 		const updateKey = () => {
 			console.log("UPDATE KEY CALLED.");
 
-			const errorId = document.getElementById('errorIdUpdate');
-			const errorUsage = document.getElementById('errorUsageUpdate');
-
 			// Clear old error messages
 			errorId.innerText = "";
 			errorUsage.innerText = "";
-
-			const inputId = document.getElementById('keyIdUpdate');
-			const inputUsage = document.getElementById('keyUsageUpdate');
 
 			if (inputId == null || inputId.value == null) {
 				const err = "Could not read ID input!";
@@ -181,23 +195,17 @@ body
 						'usages': Number(inputUsage.value)
 					}
 				})
-			}).then(res => {
-				location.reload();
-			});
+			})
+			.then(respHandler)
+			.catch(catchHandler);
 		}
 
 		const createKey = () => {
 			console.log("CREATE KEY CALLED.");
 
-			const errorAlbum = document.getElementById('errorAlbumCreate');
-			const errorUsage = document.getElementById('errorUsageCreate');
-
 			// Clear old error messages
 			errorAlbum.innerText = "";
 			errorUsage.innerText = "";
-
-			const inputAlbum = document.getElementById('keyAlbumCreate');
-			const inputUsage = document.getElementById('keyUsageCreate');
 
 			if (inputAlbum == null || inputAlbum.value == null) {
 				const err = "Could not read album name input!";
@@ -247,7 +255,7 @@ body
 						'usages': Number(inputUsage.value)
 					}
 				})
-			}).then(res => {
-				location.reload();
-			});
+			})
+			.then(respHandler)
+			.catch(catchHandler);
 		}
