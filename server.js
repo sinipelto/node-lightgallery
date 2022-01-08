@@ -115,7 +115,12 @@ app.get(route_logs, (req, res) => {
 		}
 		else {
 			try {
-				exec(`journalctl -u ${serviceName} | tail -${logLineLimit}`, (err, stdout, stderr) => {
+				const limitNum = req.query.limit ? Number(req.query.limit) : Number(logLineLimit);
+				const limit = (limitNum && !isNaN(limitNum) && limitNum > 0) ? limitNum : 0;
+
+				if (limit <= 0) throw "Invalid log line limit!";
+				
+				exec(`journalctl -u ${serviceName} | tail -${limit}`, (err, stdout, stderr) => {
 					if (err) {
 						console.error("Failed to execute command:", err);
 						res.status(500).send("ERROR: Failed to retrieve logs.");
