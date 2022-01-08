@@ -1,7 +1,6 @@
 const fs = require('fs');
 
-// Defined on DB side
-// Depends on the keying method, etc.
+const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages, created";
 const TOKEN_LENGTH = Number(process.env.TOKEN_LENGTH);
 const TABLE = process.env.TOKEN_TABLE;
 
@@ -34,7 +33,7 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 		 return;
 	 }
 
-	const qry_get = `SELECT id, album, TO_BASE64(HEX(value)) AS value, usages, created FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0;`;
+	const qry_get = `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0;`;
 	
 	con.query(qry_get, [album, key], (qerr, res) => {
 		if (qerr) {
@@ -53,7 +52,7 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 		if (consume) {
 			row = res[0];
 
-			updateKey(con, row.id, row.usages - 1, (err, ok) => {
+			this.updateKey(con, row.id, row.usages - 1, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					callback("UPDATE_USAGES_FAILED", false);
@@ -101,7 +100,7 @@ module.exports.createKey = (con, album, usages, callback) => {
 			return;
 		}
 
-		callback(null, true);
+		this.getKeys(con, album, callback);
 	});
 };
 
@@ -151,7 +150,7 @@ module.exports.deleteKey = (con, id, callback) => {
 		return;
 	}
 
-	const qry_get = `SELECT id, album, TO_BASE64(HEX(value)) AS value, usages, created FROM ${TABLE} WHERE id = ?;`;
+	const qry_get = `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE id = ?;`;
 	const qry_del = `DELETE FROM ${TABLE} WHERE id = ?;`;
 
 	con.query(qry_get, [id], (qerr, res) => {
@@ -195,7 +194,7 @@ module.exports.getKeys = (con, album, callback) => {
 		return;
 	}
 
-	var qry_get = `SELECT id, album, TO_BASE64(HEX(value)) AS value, usages, created FROM ${TABLE} ${(album == null) ? "" : "WHERE album = ?" };`;
+	var qry_get = `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album == null) ? "" : "WHERE album = ?" };`;
 
 	con.query(qry_get, (album == null) ? undefined : [album], (qerr, res) => {
 		if (qerr) {
@@ -205,7 +204,7 @@ module.exports.getKeys = (con, album, callback) => {
 		}
 		
 		if (!res || res.length <= 0) {
-			console.warning("No keys found.");
+			console.warn("No keys found.");
 			callback(null, []);
 			return;
 		}
@@ -215,13 +214,18 @@ module.exports.getKeys = (con, album, callback) => {
 };
 
 module.exports.revokeKey = (con, id, callback) => {
-	updateKey(con, id, 0, callback);
+	this.updateKey(con, id, 0, callback);
 };
 
 module.exports.writeKeysToFile = (filename, data) => {
-    fs.writeFile(filename, data, err => {
-        console.error("Failed to write keys to file:", err);
-        throw err;
+    // Prettify data as JSON string
+    data = JSON.stringify(data, null, 4);
+    fs.writeFile(filename, data, 'utf-8', err => {
+        if (err) {
+            console.error("Failed to write keys to file:", err);
+            throw err;
+        } else {
+            console.log("Keys written into file: " + filename);
+        }
     });
 };
-
