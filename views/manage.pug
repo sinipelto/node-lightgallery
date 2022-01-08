@@ -78,17 +78,17 @@ body
 	include _bs_foot.pug
 
 	script(type="text/javascript").
-		const errorId = document.getElementById('errorIdUpdate');
-		const errorUsage = document.getElementById('errorUsageUpdate');
+		const errorIdUpdate = document.getElementById('errorIdUpdate');
+		const errorUsageUpdate = document.getElementById('errorUsageUpdate');
 
-		const inputId = document.getElementById('keyIdUpdate');
-		const inputUsage = document.getElementById('keyUsageUpdate');
+		const inputIdUpdate = document.getElementById('keyIdUpdate');
+		const inputUsageUpdate = document.getElementById('keyUsageUpdate');
 
-		const errorAlbum = document.getElementById('errorAlbumCreate');
-		const errorUsage = document.getElementById('errorUsageCreate');
+		const errorAlbumCreate = document.getElementById('errorAlbumCreate');
+		const errorUsageCreate = document.getElementById('errorUsageCreate');
 
-		const inputAlbum = document.getElementById('keyAlbumCreate');
-		const inputUsage = document.getElementById('keyUsageCreate');
+		const inputAlbumCreate = document.getElementById('keyAlbumCreate');
+		const inputUsageCreate = document.getElementById('keyUsageCreate');
 		
 		const respHandler = (res) => {
 			location.reload();
@@ -134,55 +134,55 @@ body
 			console.log("UPDATE KEY CALLED.");
 
 			// Clear old error messages
-			errorId.innerText = "";
-			errorUsage.innerText = "";
+			errorIdUpdate.innerText = "";
+			errorUsageUpdate.innerText = "";
 
-			if (inputId == null || inputId.value == null) {
+			if (inputIdUpdate == null || inputIdUpdate.value == null) {
 				const err = "Could not read ID input!";
-				errorId.innerText = err;
+				errorIdUpdate.innerText = err;
 				throw err;
 			}
 
-			if (inputUsage == null || inputUsage.value == null) {
+			if (inputUsageUpdate == null || inputUsageUpdate.value == null) {
 				const err = "Could not read usage count input!";
-				errorUsage.innerText = err;
+				errorUsageUpdate.innerText = err;
 				throw err;
 			}
 
-			if (typeof inputId.value != 'string' || inputId.value == '') {
+			if (typeof inputIdUpdate.value != 'string' || inputIdUpdate.value == '') {
 				const err = "Invalid or empty value for ID!";
-				errorId.innerText = err;
+				errorIdUpdate.innerText = err;
 				throw err;
 			}
 
-			if (typeof inputUsage.value != 'string' || inputUsage.value == '') {
+			if (typeof inputUsageUpdate.value != 'string' || inputUsageUpdate.value == '') {
 				const err = "Invalid or empty value for usage count!";
-				errorUsage.innerText = err;
+				errorUsageUpdate.innerText = err;
 				throw err;
 			}
 
-			if (isNaN(inputId.value)) {
+			if (isNaN(inputIdUpdate.value)) {
 				const err = "ID must be a number!";
-				errorId.innerText = err;
+				errorIdUpdate.innerText = err;
 				throw err;
-			} else if (inputId.value < 0) {
+			} else if (inputIdUpdate.value < 0) {
 				const err = "ID must have value greater than or equal to zero (>= 0)!";
-				errorId.innerText = err;
+				errorIdUpdate.innerText = err;
 				throw err;
 			}
 
-			if (isNaN(inputUsage.value)) {
+			if (isNaN(inputUsageUpdate.value)) {
 				const err = "Usage count must be a number!";
-				errorUsage.innerText = err;
+				errorUsageUpdate.innerText = err;
 				throw err;
-			} else if (inputUsage.value < 0) {
+			} else if (inputUsageUpdate.value < 0) {
 				const err = "Usage count must have value greater than or equal to zero (>= 0)!";
-				errorUsage.innerText = err;
+				errorUsageUpdate.innerText = err;
 				throw err;
 			}
 
-			console.log("ID:", inputId.value);
-			console.log("USAGE:", inputUsage.value);
+			console.log("ID:", inputIdUpdate.value);
+			console.log("USAGE:", inputUsageUpdate.value);
 
 			fetch("/management", {
 				'method': 'POST',
@@ -190,9 +190,9 @@ body
 				'body': JSON.stringify({
 					'key': '#{key}',
 					'action': 'update',
-					'target_id': Number(inputId.value),
+					'target_id': Number(inputIdUpdate.value),
 					'data': {
-						'usages': Number(inputUsage.value)
+						'usages': Number(inputUsageUpdate.value)
 					}
 				})
 			})
@@ -204,45 +204,45 @@ body
 			console.log("CREATE KEY CALLED.");
 
 			// Clear old error messages
-			errorAlbum.innerText = "";
-			errorUsage.innerText = "";
+			errorAlbumCreate.innerText = "";
+			errorUsageCreate.innerText = "";
 
-			if (inputAlbum == null || inputAlbum.value == null) {
+			if (inputAlbumCreate == null || inputAlbumCreate.value == null) {
 				const err = "Could not read album name input!";
-				errorAlbum.innerText = err;
+				errorAlbumCreate.innerText = err;
 				throw err;
 			}
 
-			if (inputUsage == null || inputUsage.value == null) {
+			if (inputUsageCreate == null || inputUsageCreate.value == null) {
 				const err = "Could not read usage count input!";
-				errorUsage.innerText = err;
+				errorUsageCreate.innerText = err;
 				throw err;
 			}
 
-			if (typeof inputAlbum.value != 'string' || inputAlbum.value == '') {
+			if (typeof inputAlbumCreate.value != 'string' || inputAlbumCreate.value == '') {
 				const err = "Invalid or empty value for album name!";
-				errorAlbum.innerText = err;
+				errorAlbumCreate.innerText = err;
 				throw err;
 			}
 
-			if (typeof inputUsage.value != 'string' || inputUsage.value == '') {
+			if (typeof inputUsageCreate.value != 'string' || inputUsageCreate.value == '') {
 				const err = "Invalid or empty value for usage count!";
-				errorUsage.innerText = err;
+				errorUsageCreate.innerText = err;
 				throw err;
 			}
 
-			if (isNaN(inputUsage.value)) {
+			if (isNaN(inputUsageCreate.value)) {
 				const err = "Usage count must be a number!";
-				errorUsage.innerText = err;
+				errorUsageCreate.innerText = err;
 				throw err;
-			} else if (inputUsage.value < 0) {
+			} else if (inputUsageCreate.value < 0) {
 				const err = "Usage count must have value greater than or equal to zero (>= 0)!";
-				errorUsage.innerText = err;
+				errorUsageCreate.innerText = err;
 				throw err;
 			}
 
-			console.log("ALBUM:", inputAlbum.value);
-			console.log("USAGE:", inputUsage.value);
+			console.log("ALBUM:", inputAlbumCreate.value);
+			console.log("USAGE:", inputUsageCreate.value);
 
 			fetch("/management", {
 				'method': 'POST',
@@ -251,8 +251,8 @@ body
 					'key': '#{key}',
 					'action': 'new',
 					'data': {
-						'album': (inputAlbum.value.startsWith('/')) ? inputAlbum.value : '/' + inputAlbum.value,
-						'usages': Number(inputUsage.value)
+						'album': (inputAlbumCreate.value.startsWith('/')) ? inputAlbumCreate.value : '/' + inputAlbumCreate.value,
+						'usages': Number(inputUsageCreate.value)
 					}
 				})
 			})

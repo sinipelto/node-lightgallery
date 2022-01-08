@@ -14,7 +14,7 @@ const app = express();
 const host = process.env.NODE_HOST;
 const port = process.env.NODE_PORT;
 
-if (!host || !port) {
+if (!host || isNaN(port)) {
 	throw "Host or port not set. Check env vars are set.";
 }
 
@@ -39,7 +39,7 @@ if (!serviceName) {
 
 const logLineLimit = process.env.LOG_LINE_LIMIT;
 
-if (!logLineLimit) {
+if (isNaN(logLineLimit)) {
 	throw "Invalid log line limit. Check env var is set.";
 }
 

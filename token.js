@@ -4,7 +4,7 @@ const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages, created
 const TOKEN_LENGTH = Number(process.env.TOKEN_LENGTH);
 const TABLE = process.env.TOKEN_TABLE;
 
-if (!TOKEN_LENGTH || isNaN(TOKEN_LENGTH)) {
+if (isNaN(TOKEN_LENGTH)) {
     throw "Invalid key length. Check env var is set.";
 }
 
@@ -12,10 +12,10 @@ if (!TABLE) {
     throw "Invalid table name. Check env var is set.";
 }
 
-const validateKey = (key) => (key && typeof key == 'string' && key.length == TOKEN_LENGTH);
-const validateAlbum = (album) => (album && typeof album == 'string' && album.startsWith('/'));
-const validateId = (id) => (id && typeof id == 'number' && !isNaN(id) && id >= 0);
-const validateUsages = (usages) => (usages && typeof usages == 'number' && !isNaN(usages) && usages >= 0);
+const validateKey = (key) => (typeof key == 'string' && key.length == TOKEN_LENGTH);
+const validateAlbum = (album) => (typeof album == 'string' && album.startsWith('/'));
+const validateId = (id) => (typeof id == 'number' && !isNaN(id) && id >= 0);
+const validateUsages = (usages) => (typeof usages == 'number' && !isNaN(usages) && usages >= 0);
 
 module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 	if (!con) {
