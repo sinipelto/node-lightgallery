@@ -120,7 +120,7 @@ app.get(route_logs, (req, res) => {
 						console.error("Failed to execute command:", err);
 						res.status(500).send("ERROR: Failed to retrieve logs.");
 					} else {
-						res.send("STDOUT:\n" + stdout + "\n\n" + "STDERR:\n" + stderr);
+						res.send("STDOUT:<br><br>" + stdout.newLineToHtml() + "<br><br><br>" + "STDERR:<br><br>" + stderr.newLineToHtml());
 					}
 				});
 			} catch (cerr) {

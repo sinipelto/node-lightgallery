@@ -1,4 +1,6 @@
-String.prototype.leftTrim = () => this.replace(/^\s+/,"");
+String.prototype.leftTrim = () => this.replace(/^\s+/,'');
+
+String.prototype.newLineToHtml = () => this.replace(/(?:\r\n|\r|\n)/g, '<br>');
 
 const filterMedia = imags => {
 	return imags.filter( elem =>
