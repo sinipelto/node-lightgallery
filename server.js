@@ -37,9 +37,12 @@ if (!serviceName) {
 	throw "Invalid service name. Check env var is set.";
 }
 
-const logLineLimit = process.env.LOG_LINE_LIMIT;
+// Handle the log line limiting
+// Hard-coded max limit, overridable by the env var
+const defaultLogLineLimit = Number(process.env.LOG_LINE_LIMIT);
+const MAX_LOG_LINES = (defaultLogLineLimit > 1000000) ? defaultLogLineLimit : 1000000;
 
-if (isNaN(logLineLimit)) {
+if (isNaN(defaultLogLineLimit) || defaultLogLineLimit <= 0) {
 	throw "Invalid log line limit. Check env var is set.";
 }
 
@@ -115,11 +118,9 @@ app.get(route_logs, (req, res) => {
 		}
 		else {
 			try {
-				const limitNum = req.query.limit ? Number(req.query.limit) : Number(logLineLimit);
-				const limit = (limitNum && !isNaN(limitNum) && limitNum > 0) ? limitNum : 0;
+				const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
+				const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
 
-				if (limit <= 0) throw "Invalid log line limit!";
-				
 				exec(`journalctl -u ${serviceName} | tail -${limit}`, (err, stdout, stderr) => {
 					if (err) {
 						console.error("Failed to execute command:", err);
@@ -310,7 +311,7 @@ app.get('/:url', (req, res) => {
 								} catch (error) {
 									meta = utils.defaultMeta();
 								}
-	
+
 								res.render('gallery', {
 									is_index: false,
 									gallery_path: target_url,
