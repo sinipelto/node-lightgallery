@@ -92,7 +92,7 @@ module.exports.initDatabase = () => {
 	conn.query(qry_crt, (err, res) => {
 		// Check if errors
 		if (err || !res) {
-			// If already exists, already ok
+			// If already exists, check for initial accessibility e.g. in case of complete lockout
 			if (err.errno == 1050) {
 				console.log("Token Table already exists. DB is ready. Ensuring keys for management exist..");
 
@@ -115,12 +115,14 @@ module.exports.initDatabase = () => {
 						return;
 					}
 
+					conn.end();
 					console.log("Active keys with usages left. No action taken.");
 				});
 
 				return;
 			}
 
+			conn.end();
 			console.error("ERROR: Failed to create tokens table:", err);
 			throw err;
 		}
