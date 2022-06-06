@@ -25,14 +25,14 @@ body
 				- j = 0;
 				.row
 					while i < max && j < 6
-						.item.col-sm(data-src=`${gallery_path}/${photos[i]}?key=${key}`)
+						.item.col(data-src=`${gallery_path}/${photos[i]}?key=${key}`, data-external-thumb-image=`${gallery_path}/thumbnails/${photos[i]}?key=${key}`)
 							img.img-thumbnail(src=`${gallery_path}/thumbnails/${photos[i]}?key=${key}`)
 						- i++; j++;
 
 	// Lightgallery main
 	script(src="js/lightgallery.min.js")
 
-	// Additional plugins
+	// Additional Lightgallery plugins
 	script(src="plugins/autoplay/lg-autoplay.min.js")
 	script(src="plugins/pager/lg-pager.min.js")
 	script(src="plugins/thumbnail/lg-thumbnail.min.js")
@@ -43,6 +43,8 @@ body
 		lightGallery(document.getElementById('lightgallery'), {
 			selector: '.item',
 			plugins: [lgZoom, lgPager, lgThumbnail, lgAutoplay],
+			exThumbImage: 'data-external-thumb-image',
 			thumbnail: true,
+			preload: 1,
 			speed: 500
 		});
