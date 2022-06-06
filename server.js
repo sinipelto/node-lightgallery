@@ -1,12 +1,16 @@
 require('dotenv').config({ path: require('find-config')('.env') });
 
-const dbProvider = process.env.DATABASE_PROVIDER;
+const supportedProviders = [
+	'mysql'
+];
+
+const dbProvider = String(process.env.DATABASE_PROVIDER).toLowerCase();
 
 if (!dbProvider) {
 	throw "Invalid database provider. Check env var is set.";
+} else if (!supportedProviders.includes(dbProvider)) {
+	throw `ERROR: Requested DB provider is not supported at the moment. Supported providers: ${supportedProviders.toString()}`;
 }
-
-const utils = require('./utils.js');
 
 let dbManager;
 
@@ -15,6 +19,10 @@ if (dbProvider == 'mysql') {
 }
 
 const tokenManager = require('./token.js');
+
+const utils = require('./utils.js');
+
+
 
 const fs = require('fs');
 const requestIp = require('request-ip');
