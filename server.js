@@ -1,7 +1,19 @@
 require('dotenv').config({ path: require('find-config')('.env') });
 
+const dbProvider = process.env.DATABASE_PROVIDER;
+
+if (!dbProvider) {
+	throw "Invalid database provider. Check env var is set.";
+}
+
 const utils = require('./utils.js');
-const dbManager = require('./db.js');
+
+let dbManager;
+
+if (dbProvider == 'mysql') {
+	dbManager = require('./db-mysql.js');
+}
+
 const tokenManager = require('./token.js');
 
 const fs = require('fs');
@@ -18,17 +30,11 @@ if (!host || isNaN(port)) {
 	throw "Host or port not set. Check env vars are set.";
 }
 
-const photo_url = process.env.PHOTOS_URL;
-const photo_path = process.env.PHOTOS_PATH;
+const photoUrl = process.env.PHOTOS_URL;
+const photoPath = process.env.PHOTOS_PATH;
 
-if (!photo_url || !photo_path) {
+if (!photoUrl || !photoPath) {
 	throw "Invalid photo url or photo path. Check env vars are set.";
-}
-
-const db_provider = process.env.DATABASE_PROVIDER;
-
-if (!db_provider) {
-	throw "Invalid database provider. Check env var is set.";
 }
 
 const serviceName = process.env.SERVICE_NAME;
@@ -47,7 +53,7 @@ if (isNaN(defaultLogLineLimit) || defaultLogLineLimit <= 0) {
 }
 
 // Init the DB (create tables, etc.) for first use
-dbManager.initDatabase(db_provider);
+dbManager.initDatabase(dbProvider);
 
 // Load static assets
 app.use('/favicon.ico', express.static(__dirname + process.env.FAVICON_PATH));
@@ -99,8 +105,8 @@ app.get(route_root, (req, res) => {
 		else {
 			res.render('index', {
 				is_index: true,
-				album_url: photo_url,
-				albums: fs.readdirSync(photo_path)
+				album_url: photoUrl,
+				albums: fs.readdirSync(photoPath)
 			});
 		}
 	});
@@ -244,7 +250,7 @@ app.post(route_management, (req, res) => {
 	});	
 });
 
-app.get(photo_url + '/*' + '/:photo', (req, res) => {
+app.get(photoUrl + '/*' + '/:photo', (req, res) => {
 	// Log flood
 	// console.info(`GET ${req.path} [${req.clientIp}]`);
 	// console.log("REQ QUERY:", req.query);
@@ -252,7 +258,7 @@ app.get(photo_url + '/*' + '/:photo', (req, res) => {
 
 	const album_url = '/' + req.params['0'];
 	const file_url = '/' + req.params.photo;
-	const photo_file = photo_path + album_url + file_url;
+	const photo_file = photoPath + album_url + file_url;
 
 	// We can first verify the key since it does NOT consume in here
 	tokenManager.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
@@ -280,8 +286,8 @@ app.get('/:url', (req, res) => {
 	console.log("REQ PARAMS:", req.params);
 
 	const url = '/' + req.params.url;
-	const target_url = photo_url + url;
-	const target_path = photo_path + url;
+	const target_url = photoUrl + url;
+	const target_path = photoPath + url;
 
 	fs.exists(target_path, e => {
 		if (e) {
