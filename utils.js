@@ -20,8 +20,8 @@ const filterMedia = imags => {
 
 const defaultMeta = () => {
 	return {
-		"title": "Unknown Album",
-		"description": "meta.json was not found within the album."
+		"title": "Unnamed Album",
+		"description": "Metadata file was not found within the album."
 	};
 };
 
