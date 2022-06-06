@@ -19,15 +19,12 @@ if (dbProvider == 'mysql') {
 }
 
 const tokenManager = require('./token.js');
-
 const utils = require('./utils.js');
 
-
-
 const fs = require('fs');
-const requestIp = require('request-ip');
 const express = require('express');
 const { exec } = require('child_process');
+const requestIp = require('request-ip');
 
 // Init express
 const app = express();
@@ -90,7 +87,7 @@ const unauthorized = (err, res) => {
 		.send("Invalid auth key provided." +
 			" Ensure parameter 'key' in the URL is set and is correct." +
 			"<br><br>DEBUG INFO: " + err
-			);
+		);
 };
 
 // Initiate a DB connection pool for accessing the DB consistently & reliably
@@ -255,7 +252,7 @@ app.post(route_management, (req, res) => {
 				res.status(500).send("Caught exception during request processing: " + cerr);
 			}
 		}
-	});	
+	});
 });
 
 app.get(photoUrl + '/*' + '/:photo', (req, res) => {
@@ -271,7 +268,7 @@ app.get(photoUrl + '/*' + '/:photo', (req, res) => {
 	// We can first verify the key since it does NOT consume in here
 	tokenManager.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
 		if (err || !ok) {
-			console.info(`GET ${req.path} [${req.clientIp}]`);
+			console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
 			console.error(err);
 			unauthorized(err, res);
 		}
@@ -280,7 +277,7 @@ app.get(photoUrl + '/*' + '/:photo', (req, res) => {
 				if (e) {
 					res.sendFile(photo_file);
 				} else {
-					console.info(`GET ${req.path} [${req.clientIp}]`);
+					console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
 					res.status(404).send("Requested photo was not found.");
 				}
 			});
@@ -303,40 +300,41 @@ app.get('/:url', (req, res) => {
 				if (err || !ok) {
 					console.error(err);
 					unauthorized(err, res);
+					return;
 				}
-				else {
-					fs.readdir(target_path, (err, files) => {
-						if (err) {
-							console.error("Failed to process album files:", err);
-							res.sendStatus(500);
-						} else {
-							fs.readFile(target_path + "/meta.json", (err, file) => {
-								var meta;
-								
-								// Try to read meta.json
-								// If read fails, or file is malformed, fallback to default meta
-								try {
-									if (err) {
-										console.error("Failed to read album META:", err);
-										throw err;
-									} else {
-										meta = JSON.parse(file);
-									}
-								} catch (error) {
-									meta = utils.defaultMeta();
-								}
 
-								res.render('gallery', {
-									is_index: false,
-									gallery_path: target_url,
-									photos: utils.filterMedia(files),
-									key: req.query.key,
-									meta
-								});
-							});
+				fs.readdir(target_path, (err, files) => {
+					if (err) {
+						console.error("Failed to process album files:", err);
+						res.sendStatus(500);
+						return;
+					}
+
+					fs.readFile(target_path + "/meta.json", (err, file) => {
+						var meta;
+
+						// Try to read meta.json
+						// If read fails, or file is malformed, fallback to default meta
+						try {
+							if (err) {
+								console.error("Failed to read album META:", err);
+								throw err;
+							} else {
+								meta = JSON.parse(file);
+							}
+						} catch (error) {
+							meta = utils.defaultMeta();
 						}
+
+						res.render('gallery', {
+							is_index: false,
+							gallery_path: target_url,
+							photos: utils.filterMedia(files),
+							key: req.query.key,
+							meta
+						});
 					});
-				}
+				});
 			});
 		} else {
 			res.status(404).send("The album you were looking for was not found. Please double check the URL.");
