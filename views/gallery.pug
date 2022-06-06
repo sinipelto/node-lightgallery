@@ -19,14 +19,15 @@ body
 		.container.album.py-5
 			.row
 				each file in photos
-					div.item.col-md-3.border(data-src=`${gallery_path}/${file}?key=${key}`)
-						img(src=`${gallery_path}/${file}?key=${key}`)
+					.item.col-md-3.border(data-src=`${gallery_path}/${file}?key=${key}`)
+						img.img-thumbnail(src=`${gallery_path}/${file}?key=${key}`)
 
 	// Lightgallery main
 	script(src="js/lightgallery.min.js")
 
 	// Additional plugins
 	script(src="plugins/autoplay/lg-autoplay.min.js")
+	script(src="plugins/pager/lg-pager.min.js")
 	script(src="plugins/thumbnail/lg-thumbnail.min.js")
 	script(src="plugins/zoom/lg-zoom.min.js")
 
@@ -34,7 +35,7 @@ body
 	script(type="text/javascript").
 		lightGallery(document.getElementById('gallery'), {
 			selector: '.item',
-			plugins: [lgZoom, lgThumbnail, lgAutoplay],
+			plugins: [lgZoom, lgPager, lgThumbnail, lgAutoplay],
 			thumbnail: true,
 			speed: 500,
 			width: '100%'
