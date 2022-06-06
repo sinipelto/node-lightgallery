@@ -5,12 +5,18 @@ const TOKEN_LENGTH = Number(process.env.TOKEN_LENGTH);
 const TABLE = process.env.TOKEN_TABLE;
 
 if (isNaN(TOKEN_LENGTH)) {
-    throw "Invalid key length. Check env var is set.";
+	throw "Invalid key length. Check env var is set.";
 }
 
 if (!TABLE) {
-    throw "Invalid table name. Check env var is set.";
+	throw "Invalid table name. Check env var is set.";
 }
+
+const queryGetAll = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album == null) ? "" : "WHERE album = ?"};`;
+const queryGetValid = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0;`;
+const queryNew = () => `INSERT INTO ${TABLE} (album, usages) VALUES (?, ?);`;
+const queryUpdate = () => `UPDATE ${TABLE} SET usages = ? WHERE id = ?;`;
+const queryDelete = () => `DELETE FROM ${TABLE} WHERE id = ?;`;
 
 const validateKey = (key) => (typeof key == 'string' && key.length == TOKEN_LENGTH);
 const validateAlbum = (album) => (typeof album == 'string' && album.startsWith('/'));
@@ -28,22 +34,20 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 		return;
 	}
 
-	 if(!validateAlbum(album)) {
-		 callback("INVALID_ALBUM", false);
-		 return;
-	 }
+	if (!validateAlbum(album)) {
+		callback("INVALID_ALBUM", false);
+		return;
+	}
 
-	const qry_get = `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0;`;
-	
-	con.query(qry_get, [album, key], (qerr, res) => {
-		if (qerr) {
+	con.query(queryGetValid(), [album, key], (qerr, res) => {
+		if (qerr || !res) {
 			console.error(qerr);
 			callback(qerr, false);
 			return;
 		}
-		
+
 		// No keys found with query
-		if (!res || res.length <= 0) {
+		if (res.length <= 0) {
 			console.error("Matching key not found.");
 			callback("KEY_MATCH_NOT_FOUND", false);
 			return;
@@ -80,20 +84,18 @@ module.exports.createKey = (con, album, usages, callback) => {
 		callback("INVALID_CONNECTION", false);
 		return;
 	}
-	
+
 	if (!validateAlbum(album)) {
 		callback("INVALID_ALBUM", false);
 		return;
 	}
-	
+
 	if (!validateUsages(usages)) {
 		callback("INVALID_USAGES", false);
 		return;
 	}
 
-	const qry_new = `INSERT INTO ${TABLE} (album, usages) VALUES (?, ?);`;
-
-	con.query(qry_new, [album, (usages != null && usages >= 0) ? usages : 1], (qerr, res) => {
+	con.query(queryNew(), [album, (usages != null && usages >= 0) ? usages : 1], (qerr, res) => {
 		if (qerr) {
 			console.error(qerr);
 			callback(qerr, false);
@@ -120,16 +122,14 @@ module.exports.updateKey = (con, id, usages, callback) => {
 		return;
 	}
 
-	const qry_upd = `UPDATE ${TABLE} SET usages = ? WHERE id = ?;`;
-
-	con.query(qry_upd, [usages, id], (qerr, res) => {
-		if (qerr) {
+	con.query(queryUpdate(), [usages, id], (qerr, res) => {
+		if (qerr || !res) {
 			console.error(qerr);
 			callback("UPDATE_FAILED", false);
 			return;
 		}
 
-		if (!res || res.length <= 0 || res.affectedRows <= 0) {
+		if (res.length <= 0 || res.affectedRows <= 0) {
 			console.error("ERROR: Key to update was not found with ID " + id);
 			callback("KEY_NOT_FOUND", false);
 			return;
@@ -150,17 +150,14 @@ module.exports.deleteKey = (con, id, callback) => {
 		return;
 	}
 
-	const qry_del = `DELETE FROM ${TABLE} WHERE id = ?;`;
-
-	con.query(qry_del, [id], (qerr, res) => {
-		if (qerr) {
+	con.query(queryDelete(), [id], (qerr, res) => {
+		if (qerr || !res) {
 			console.error(qerr);
 			callback("DELETE_FAILED", false);
 			return;
-
 		}
 
-		if (!res || res.length <= 0 || res.affectedRows <= 0) {
+		if (res.length <= 0 || res.affectedRows <= 0) {
 			console.error("ERROR: Key not found.");
 			callback("KEY_NOT_FOUND", false);
 			return;
@@ -183,16 +180,14 @@ module.exports.getKeys = (con, album, callback) => {
 		return;
 	}
 
-	var qry_get = `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album == null) ? "" : "WHERE album = ?" };`;
-
-	con.query(qry_get, (album == null) ? undefined : [album], (qerr, res) => {
-		if (qerr) {
+	con.query(queryGetAll(album), (album == null) ? undefined : [album], (qerr, res) => {
+		if (qerr || !res) {
 			console.error(qerr);
 			callback(qerr, false);
 			return;
 		}
-		
-		if (!res || res.length <= 0) {
+
+		if (res.length <= 0) {
 			console.warn("No keys found.");
 			callback(null, []);
 			return;
@@ -207,14 +202,14 @@ module.exports.revokeKey = (con, id, callback) => {
 };
 
 module.exports.writeKeysToFile = (filename, data) => {
-    // Prettify data as JSON string
-    data = JSON.stringify(data, null, 4);
-    fs.writeFile(filename, data, 'utf-8', err => {
-        if (err) {
-            console.error("Failed to write keys to file:", err);
-            throw err;
-        } else {
-            console.log("Keys written into file: " + filename);
-        }
-    });
+	// Prettify data as JSON string
+	data = JSON.stringify(data, null, 4);
+	fs.writeFile(filename, data, 'utf-8', err => {
+		if (err) {
+			console.error("Failed to write keys to file:", err);
+			throw err;
+		} else {
+			console.log("Keys written into file: " + filename);
+		}
+	});
 };
