@@ -35,7 +35,7 @@ const verifyKey = function(con, path, key, callback) {
 			console.log(res);
 			
 			if (res.length <= 0) {
-				console.log("Mathing key not found.");
+				console.log("Matching key not found.");
 				callback("NOT_FOUND", false);
 			} else {
 				row = res[0];

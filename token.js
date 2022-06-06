@@ -44,7 +44,7 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 		
 		// No keys found with query
 		if (!res || res.length <= 0) {
-			console.error("Mathing key not found.");
+			console.error("Matching key not found.");
 			callback("KEY_MATCH_NOT_FOUND", false);
 			return;
 		}
