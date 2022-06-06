@@ -109,7 +109,7 @@ module.exports.initDatabase = () => {
 						return;
 					}
 
-					if (!res.some(key => key.usages > 0)) {
+					if (res.every(key => key.usages <= 0)) {
 						console.warn("No keys with usages left. Creating key..");
 						createDumpKey(conn, path);
 						return;
