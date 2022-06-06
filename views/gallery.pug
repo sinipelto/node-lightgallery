@@ -11,16 +11,23 @@ include _bs.pug
 
 body
 	#gallery
-		section.jumbotron.text-center
+		.jumbotron.text-center
 			.container
 				h1.jumbotron-heading #{meta.title}
 			p.lead.
 				#{meta.description}
-		.container.album.py-5
-			.row
-				each file in photos
-					.item.col-md-3.border(data-src=`${gallery_path}/${file}?key=${key}`)
-						img.img-thumbnail(src=`${gallery_path}/${file}?key=${key}`)
+		#lightgallery.container.album
+			- var i = 0;
+			- var j = 0;
+			- var max = photos.length;
+
+			while i < max
+				- j = 0;
+				.row
+					while i < max && j < 6
+						.item.col-sm(data-src=`${gallery_path}/${photos[i]}?key=${key}`)
+							img.img-thumbnail(src=`${gallery_path}/thumbnails/${photos[i]}?key=${key}`)
+						- i++; j++;
 
 	// Lightgallery main
 	script(src="js/lightgallery.min.js")
@@ -33,10 +40,9 @@ body
 
 	// Lightgallery configuration
 	script(type="text/javascript").
-		lightGallery(document.getElementById('gallery'), {
+		lightGallery(document.getElementById('lightgallery'), {
 			selector: '.item',
 			plugins: [lgZoom, lgPager, lgThumbnail, lgAutoplay],
 			thumbnail: true,
-			speed: 500,
-			width: '100%'
+			speed: 500
 		});

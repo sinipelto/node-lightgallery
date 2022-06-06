@@ -254,27 +254,28 @@ app.post(route_management, (req, res) => {
 	});
 });
 
-app.get(photoUrl + '/*' + '/:photo', (req, res) => {
+app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 	// Log flood
 	// console.info(`GET ${req.path} [${req.clientIp}]`);
 	// console.log("REQ QUERY:", req.query);
 	// console.log("REQ PARAMS:", req.params);
 
-	const album_url = '/' + req.params['0'];
-	const file_url = '/' + req.params.photo;
-	const photo_file = photoPath + album_url + file_url;
+	const albumUrl = '/' + req.params.album;
+	const thumbUrl = req.params['0'];
+	const fileUrl = req.params.photo;
+	const photoFile = photoPath + albumUrl + thumbUrl +  fileUrl;
 
 	// We can first verify the key since it does NOT consume in here
-	tokenManager.verifyKey(dbPool, album_url, req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, albumUrl, req.query.key, (err, ok) => {
 		if (err || !ok) {
 			console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
 			console.error(err);
 			unauthorized(err, res);
 		}
 		else {
-			fs.exists(photo_file, e => {
+			fs.exists(photoFile, e => {
 				if (e) {
-					res.sendFile(photo_file);
+					res.sendFile(photoFile);
 				} else {
 					console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
 					res.status(404).send("Requested photo was not found.");
