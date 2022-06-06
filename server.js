@@ -109,7 +109,6 @@ app.get(route_root, (req, res) => {
 		}
 		else {
 			res.render('index', {
-				is_index: true,
 				album_url: photoUrl,
 				albums: fs.readdirSync(photoPath)
 			});
@@ -327,7 +326,6 @@ app.get('/:url', (req, res) => {
 						}
 
 						res.render('gallery', {
-							is_index: false,
 							gallery_path: target_url,
 							photos: utils.filterMedia(files),
 							key: req.query.key,
