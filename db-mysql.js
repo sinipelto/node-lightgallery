@@ -69,9 +69,9 @@ module.exports.initDatabase = (provider) => {
         const conn = this.createDbConnection();
 
         conn.query(qry_crt, (qerr, res) => {
-            conn.end();
             // Check if errors
             if (qerr || !res) {
+				conn.end();
                 // If already exists, already ok
                 if (qerr.errno == 1050) {
                     console.log("Token Table already exists. DB is ready.");
@@ -83,6 +83,7 @@ module.exports.initDatabase = (provider) => {
             // Table was created, no errors
             else {
                 tokenManager.createKey(conn, path, 100, (qerr, res) => {
+					conn.end();
                     if (qerr || !res) {
                         console.error("Failed to create initial keys:", qerr);
                         throw qerr;
