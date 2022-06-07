@@ -106,19 +106,27 @@ const printHelp = () => {
 	console.log("Usage: node process_thumbs.js <path> <width> <height>");
 };
 
+if (args[2] == "help") {
+	printHelp();
+	process.exit(0);
+}
+
 if (!args[2]) {
 	console.error("ERROR: No image path given as argument. Enter the path to the images to generate thumbnails from.");
 	printHelp();
+	process.exit(1);
 }
 
 if (!args[3]) {
 	console.error("ERROR: No target image width for thumbnails given.");
 	printHelp();
+	process.exit(1);
 }
 
 if (!args[4]) {
 	console.error("ERROR: No target image height for thumbnails given.");
 	printHelp();
+	process.exit(1);
 }
 
 this.processThumbnails(args[2], args[3], args[4]);
