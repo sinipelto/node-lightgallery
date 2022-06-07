@@ -14,17 +14,20 @@ const createThumbs = (path, thumbPath, width = 100, height = 100) => {
 
 		console.log("Generating thumbnails..");
 
+		var i = 0;
 		files.forEach((val) => {
-			try {
-				sharp(`${path}/${val}`)
-					.resize(width, height)
-					.toFile(`${thumbPath}/${val}`);
-			} catch (error) {
-				console.error("ERROR: Failed to process thumbnails:", error);
-			}
+			sharp(`${path}/${val}`)
+				.resize(width, height)
+				.withMetadata() // IMPORTANT!! Preserve Exif, rotation, orientation, etc.
+				.toFile(`${thumbPath}/${val}`)
+				.then(() => {
+					i++;
+					if (i >= files.length) console.log("Generating thumbnails done!");
+				})
+				.catch((error) => {
+					console.error("ERROR: Failed while processing thumbnails:", error);
+				});
 		});
-
-		console.log("Generating thumbnails done.");
 	});
 };
 
