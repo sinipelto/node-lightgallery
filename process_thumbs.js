@@ -55,6 +55,9 @@ const processThumbs = (path, thumbPath, width, height) => {
 					}
 				});
 			}
+
+			console.log("Deleting old thumbnails done!");
+
 			createThumbs(path, thumbPath, width, height);
 		});
 	});
@@ -65,6 +68,9 @@ module.exports.processThumbnails = (path, width, height) => {
 		console.error("ERROR: Invalid path provided:", path);
 		return;
 	}
+
+	width = (width != null && !isNaN(Number(width))) ? Number(width) : undefined;
+	height = (height != null && !isNaN(Number(height))) ? Number(height) : undefined;
 
 	fs.exists(path, (ex) => {
 		if (!ex) {
@@ -118,15 +124,13 @@ if (!args[2]) {
 }
 
 if (!args[3]) {
-	console.error("ERROR: No target image width for thumbnails given.");
+	console.warn("WARNING: No target image width for thumbnails given. Using default value.");
 	printHelp();
-	process.exit(1);
 }
 
 if (!args[4]) {
-	console.error("ERROR: No target image height for thumbnails given.");
+	console.warn("WARNING: No target image height for thumbnails given. Using default value.");
 	printHelp();
-	process.exit(1);
 }
 
 this.processThumbnails(args[2], args[3], args[4]);
