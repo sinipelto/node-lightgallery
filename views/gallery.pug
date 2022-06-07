@@ -33,8 +33,8 @@ body
 	script(src="js/lightgallery.min.js")
 
 	// Additional Lightgallery plugins
+	// NOTE: DONT USE PAGER PLUGIN - DISPLAYS BUTTONS BADLY!
 	script(src="plugins/autoplay/lg-autoplay.min.js")
-	script(src="plugins/pager/lg-pager.min.js")
 	script(src="plugins/thumbnail/lg-thumbnail.min.js")
 	script(src="plugins/zoom/lg-zoom.min.js")
 
@@ -42,7 +42,7 @@ body
 	script(type="text/javascript").
 		lightGallery(document.getElementById('lightgallery'), {
 			selector: '.item',
-			plugins: [lgZoom, lgPager, lgThumbnail, lgAutoplay],
+			plugins: [lgZoom, lgThumbnail, lgAutoplay],
 			exThumbImage: 'data-external-thumb-image',
 			thumbnail: true,
 			preload: 1,
