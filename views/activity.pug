@@ -1,0 +1,49 @@
+// Header with generic HMTL stuff
+include _header.pug
+
+// Libs
+include _jq.pug
+include _bs.pug
+
+body
+	#main
+		section.jumbotron.text-center
+			#errorMsg.alert.alert-danger.alert-dismissible.fade.show(role="alert", style="display: none;")
+				strong#errorMsgText Hello!
+				button.btn-close(type="button", data-bs-dismiss="alert", aria-label="Close")
+
+			.container
+				h1.jumbotron-heading Activity Management:
+			p.lead.text-muted.
+				Check activity history and events here.
+			h4
+				a(href=`/management?key=${key}`).
+					Back to Token Management Page
+		br
+		br
+		br
+
+		.container.text-center.col-auto
+			h2 Activity History:
+			p.
+				Rows on page: #{data.length}
+			.table-responsive
+				table.table.table-striped.table-lg
+					thead
+						tr
+							th ID
+							th Token ID
+							th Token Album
+							th Token
+							th IP Address
+							th Visited
+					tbody
+						each value in data
+							tr
+								th(scope="row")= value.id
+								td= value.token.id
+								td
+									a(href=`${value.token.album}?key=${value.token.value}`, target="_blank") #{value.token.album}
+								td= value.token.value
+								td= value.address
+								td= value.created.toLocaleString()

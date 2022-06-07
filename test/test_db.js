@@ -18,8 +18,8 @@ const key = "";
 const verifyKey = function(con, path, key, callback) {
 	if (key == null || typeof key != 'string') return false;
 
-	const qry_get = `SELECT id, usages, TO_BASE64(HEX(value)) AS result FROM token WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0 ORDER BY id LIMIT 1;`;
-	const qry_upd = `UPDATE token SET usages = ? WHERE id = ?`;
+	const qry_get = `SELECT id, usages_left, TO_BASE64(HEX(value)) AS result FROM token WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages_left > 0 ORDER BY id LIMIT 1;`;
+	const qry_upd = `UPDATE token SET usages_left = ? WHERE id = ?`;
 	
 	con.connect(err => {
 		if (err) {
@@ -39,7 +39,7 @@ const verifyKey = function(con, path, key, callback) {
 				callback("NOT_FOUND", false);
 			} else {
 				row = res[0];
-				con.query(qry_upd, [row.usages + 1, row.id], (qerr, res) => {
+				con.query(qry_upd, [row.usages_left + 1, row.id], (qerr, res) => {
 					if (qerr) {
 						console.error(qerr);
 						callback("UPDATE_FAILED", false);
@@ -70,7 +70,7 @@ con.connect(err => {
 	const path = "/test";
 	const key = "NDc2RTgwMUQwNTI1NURFODI3OThEMjE2";
 	
-	const qry_get = `SELECT TO_BASE64(HEX(value)) AS result FROM token WHERE album = '${path}' AND TO_BASE64(HEX(value)) = '${key}' AND usages > 0 ORDER BY id LIMIT 1;`;
+	const qry_get = `SELECT TO_BASE64(HEX(value)) AS result FROM token WHERE album = '${path}' AND TO_BASE64(HEX(value)) = '${key}' AND usages_left > 0 ORDER BY id LIMIT 1;`;
 	
 	console.log(qry_get);
 	

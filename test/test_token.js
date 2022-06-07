@@ -4,21 +4,21 @@ const utils = require('../utils.js');
 const db = require('../db.js');
 const tokenManager = require('../token.js');
 
-const validateUsages = (usages) => usages && typeof usages == 'number' && !isNaN(usages) && usages >= 0;
+const validateUsages = (usages_left) => usages_left && typeof usages_left == 'number' && !isNaN(usages_left) && usages_left >= 0;
 
 // console.log(isNaN('sadjk'));
 // console.log(validateUsages(0));
 
-// const usages = 0;
+// const usages_left = 0;
 
-// console.log(typeof usages == 'number' && !isNaN(usages) && usages >= 0);
+// console.log(typeof usages_left == 'number' && !isNaN(usages_left) && usages_left >= 0);
 
-// console.log(usages && typeof usages == 'number');
+// console.log(usages_left && typeof usages_left == 'number');
 
-// console.log(usages);
-// console.log(typeof usages == 'number');
-// console.log(!isNaN(usages));
-// console.log(usages >= 0);
+// console.log(usages_left);
+// console.log(typeof usages_left == 'number');
+// console.log(!isNaN(usages_left));
+// console.log(usages_left >= 0);
 
 // console.log(isNaN(undefined));
 

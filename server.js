@@ -20,6 +20,7 @@ if (dbProvider == 'mysql') {
 
 const tokenManager = require('./token.js');
 const utils = require('./utils.js');
+const activityManager = require('./activity.js');
 
 const fs = require('fs');
 const express = require('express');
@@ -96,13 +97,14 @@ const dbPool = dbManager.createDbPool();
 const route_root = '/';
 const route_logs = '/logs';
 const route_management = '/management';
+const route_activity = '/activity';
 
 app.get(route_root, (req, res) => {
 	console.info(`GET ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, route_root, req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_root, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -121,7 +123,7 @@ app.get(route_logs, (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, route_logs, req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_logs, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -147,12 +149,42 @@ app.get(route_logs, (req, res) => {
 	});
 });
 
+app.get(route_activity + '/' + ':id', (req, res) => {
+	console.info(`GET ${req.path} [${req.clientIp}]`);
+	console.log("REQ QUERY:", req.query);
+	console.log("REQ PARAMS:", req.params);
+
+	const tokenId = (req.params.id != null) ? Number(req.params.id) : NaN;
+	const limit = (req.query.limit != null) ? Number(req.query.limit) : 300;
+
+	tokenManager.verifyKey(dbPool, route_management, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+		if (err || !ok) {
+			console.error("ERROR: Failed to verify key:", err);
+			unauthorized(err, res);
+			return;
+		}
+
+		activityManager.getActivity(dbPool, tokenId, limit, (err, data) => {
+			if (err || !data) {
+				console.error(err);
+				res.status(500).send("Failed to get activity. Reason: " + err);
+			} else {
+				res.render('activity', {
+					key: req.query.key,
+					data
+				});
+			}
+		});
+
+	});
+});
+
 app.get(route_management, (req, res) => {
 	console.info(`GET ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, route_management, req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_management, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -179,7 +211,7 @@ app.post(route_management, (req, res) => {
 	console.log("REQ PARAMS:", req.params);
 	console.log("REQ BODY:", req.body);
 
-	tokenManager.verifyKey(dbPool, route_management, req.body.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_management, req.body.key, { 'address': req.clientIp }, (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -202,7 +234,7 @@ app.post(route_management, (req, res) => {
 						});
 						break;
 					case "new":
-						tokenManager.createKey(dbPool, data.album, data.usages, (err, ok) => {
+						tokenManager.createKey(dbPool, data.album, data.usages_left, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to add new key: " + err);
@@ -212,14 +244,14 @@ app.post(route_management, (req, res) => {
 						});
 						break;
 					case "update":
-						tokenManager.updateKey(dbPool, target_id, data.usages, (err, ok) => {
+						tokenManager.updateKey(dbPool, target_id, data.usages_left, (err, ok) => {
 							if (err || !ok) {
 								console.error(err);
 								res.status(400).send("ERROR: Failed to modify key:" + err);
 							} else {
 								res.sendStatus(200);
 							}
-						});
+						}, reset = true);
 						break;
 					case "revoke":
 						tokenManager.revokeKey(dbPool, target_id, (err, ok) => {
@@ -263,10 +295,10 @@ app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 	const albumUrl = '/' + req.params.album;
 	const thumbUrl = req.params['0'];
 	const fileUrl = req.params.photo;
-	const photoFile = photoPath + albumUrl + thumbUrl +  fileUrl;
+	const photoFile = photoPath + albumUrl + thumbUrl + fileUrl;
 
 	// We can first verify the key since it does NOT consume in here
-	tokenManager.verifyKey(dbPool, albumUrl, req.query.key, (err, ok) => {
+	tokenManager.verifyKey(dbPool, albumUrl, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 		if (err || !ok) {
 			console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
 			console.error(err);
@@ -282,21 +314,21 @@ app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 				}
 			});
 		}
-	}, false);
+	}, consume = false);
 });
 
-app.get('/:url', (req, res) => {
+app.get('/:album', (req, res) => {
 	console.info(`GET ${req.path} [${req.clientIp}]`);
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	const url = '/' + req.params.url;
+	const url = '/' + req.params.album;
 	const target_url = photoUrl + url;
 	const target_path = photoPath + url;
 
 	fs.exists(target_path, e => {
 		if (e) {
-			tokenManager.verifyKey(dbPool, url, req.query.key, (err, ok) => {
+			tokenManager.verifyKey(dbPool, url, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					unauthorized(err, res);
@@ -346,7 +378,7 @@ app.get("*", (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	res.status(404).send("Page not found.");
+	res.status(404).send("Page not found. Ensure the provided URL is correct and parameter 'key' is set with a correct key.");
 });
 
 app.listen(port, host, () => {

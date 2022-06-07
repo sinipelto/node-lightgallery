@@ -1,6 +1,9 @@
+const utils = require('./utils.js');
+const activityManager = require('./activity.js');
+
 const fs = require('fs');
 
-const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages, created";
+const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages_init, usages_left, (usages_init - usages_left) as usages, created";
 const TOKEN_LENGTH = Number(process.env.TOKEN_LENGTH);
 const TABLE = process.env.TOKEN_TABLE;
 
@@ -12,24 +15,25 @@ if (!TABLE) {
 	throw "Invalid table name. Check env var is set.";
 }
 
-const queryGetAll = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album == null) ? "" : "WHERE album = ?"};`;
-const queryGetValid = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages > 0;`;
-const queryNew = () => `INSERT INTO ${TABLE} (album, usages) VALUES (?, ?);`;
-const queryUpdate = () => `UPDATE ${TABLE} SET usages = ? WHERE id = ?;`;
-const queryDelete = () => `DELETE FROM ${TABLE} WHERE id = ?;`;
+const queryGetAll = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ?" : ""};`;
+const queryGetAllExisting = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ? AND" : "WHERE"} deleted IS FALSE;`;
+const queryGetById = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE id = ? AND deleted IS FALSE;`;
+const queryGetAllValid = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages_left > 0 AND deleted IS FALSE;`;
 
-const validateKey = (key) => (typeof key == 'string' && key.length == TOKEN_LENGTH);
+const queryNew = () => `INSERT INTO ${TABLE} (album, usages_init, usages_left) VALUES (?, ?, ?);`;
+const queryUpdate = (reset) => `UPDATE ${TABLE} SET ${reset ? "usages_init = ?," : ""} usages_left = ? WHERE id = ? AND deleted IS FALSE;`;
+const queryDelete = (filter) => `UPDATE ${TABLE} SET deleted = TRUE ${filter ? "WHERE " + filter + " = ? AND" : "WHERE"} deleted IS FALSE;`;
+
 const validateAlbum = (album) => (typeof album == 'string' && album.startsWith('/'));
-const validateId = (id) => (typeof id == 'number' && !isNaN(id) && id >= 0);
 const validateUsages = (usages) => (typeof usages == 'number' && !isNaN(usages) && usages >= 0);
 
-module.exports.verifyKey = (con, album, key, callback, consume = true) => {
+module.exports.verifyKey = (con, album, key, info, callback, consume = true) => {
 	if (!con) {
-		callback("INVALID_CONNECTION", false);
+		callback("INVALID_OR_BAD_CONNECTION", false);
 		return;
 	}
 
-	if (!validateKey(key)) {
+	if (!utils.validateKey(key)) {
 		callback("INVALID_KEY", false);
 		return;
 	}
@@ -39,7 +43,7 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 		return;
 	}
 
-	con.query(queryGetValid(), [album, key], (qerr, res) => {
+	con.query(queryGetAllValid(), [album, key], (qerr, res) => {
 		if (qerr || !res) {
 			console.error(qerr);
 			callback(qerr, false);
@@ -53,10 +57,25 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 			return;
 		}
 
+		// Matches more than one key
+		// Should NEVER occur
+		if (res.length > 1) {
+			console.error("ERROR: Multiple key matches found.");
+			callback("KEY_MULTIPLE_MATCHES", false);
+			return;
+		}
+
 		if (consume) {
 			row = res[0];
 
-			this.updateKey(con, row.id, row.usages - 1, (err, ok) => {
+			activityManager.addActivity(con, { 'token': row, 'info': info }, (err, ares) => {
+				if (err || !ares) {
+					console.error("ERROR: Failed to log activity:", err);
+					return;
+				}
+			});
+
+			this.updateKey(con, row.id, row.usages_left - 1, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					callback("UPDATE_USAGES_FAILED", false);
@@ -81,7 +100,7 @@ module.exports.verifyKey = (con, album, key, callback, consume = true) => {
 
 module.exports.createKey = (con, album, usages, callback) => {
 	if (!con) {
-		callback("INVALID_CONNECTION", false);
+		callback("INVALID_OR_BAD_CONNECTION", false);
 		return;
 	}
 
@@ -95,7 +114,7 @@ module.exports.createKey = (con, album, usages, callback) => {
 		return;
 	}
 
-	con.query(queryNew(), [album, (usages != null && usages >= 0) ? usages : 1], (qerr, res) => {
+	con.query(queryNew(), [album, usages, usages], (qerr, res) => {
 		if (qerr) {
 			console.error(qerr);
 			callback(qerr, false);
@@ -106,13 +125,13 @@ module.exports.createKey = (con, album, usages, callback) => {
 	});
 };
 
-module.exports.updateKey = (con, id, usages, callback) => {
+module.exports.updateKey = (con, id, usages, callback, reset = false) => {
 	if (!con) {
-		callback("INVALID_CONNECTION", false);
+		callback("INVALID_OR_BAD_CONNECTION", false);
 		return;
 	}
 
-	if (!validateId(id)) {
+	if (!utils.validateId(id)) {
 		callback("INVALID_ID", false);
 		return;
 	}
@@ -122,21 +141,22 @@ module.exports.updateKey = (con, id, usages, callback) => {
 		return;
 	}
 
-	con.query(queryUpdate(), [usages, id], (qerr, res) => {
+	con.query(queryUpdate(reset), reset ? [usages, usages, id] : [usages, id], (qerr, res) => {
 		if (qerr || !res) {
-			console.error(qerr);
+			console.error("ERROR: Failed to update key:", qerr);
 			callback("UPDATE_FAILED", false);
 			return;
 		}
 
 		if (res.length <= 0 || res.affectedRows <= 0) {
-			console.error("ERROR: Key to update was not found with ID " + id);
-			callback("KEY_NOT_FOUND", false);
+			console.error("ERROR: Key to update was not found or afftected with ID:", id);
+			callback("KEY_NOT_FOUND_OR_AFFECTED", false);
 			return;
 		}
 
 		callback(null, true);
 	});
+
 };
 
 module.exports.deleteKey = (con, id, callback) => {
@@ -145,12 +165,12 @@ module.exports.deleteKey = (con, id, callback) => {
 		return;
 	}
 
-	if (!validateId(id)) {
+	if (!utils.validateId(id)) {
 		callback("INVALID_ID", false);
 		return;
 	}
 
-	con.query(queryDelete(), [id], (qerr, res) => {
+	con.query(queryDelete('id'), [id], (qerr, res) => {
 		if (qerr || !res) {
 			console.error(qerr);
 			callback("DELETE_FAILED", false);
@@ -174,13 +194,13 @@ module.exports.getKeys = (con, album, callback) => {
 	}
 
 	// album == null => all albums
-	// album != null -> validate
+	// album != null -> validate album value
 	if (album != null && !validateAlbum(album)) {
 		callback("INVALID_ALBUM", false);
 		return;
 	}
 
-	con.query(queryGetAll(album), (album == null) ? undefined : [album], (qerr, res) => {
+	con.query(queryGetAllExisting(album), (album == null) ? undefined : [album], (qerr, res) => {
 		if (qerr || !res) {
 			console.error(qerr);
 			callback(qerr, false);
@@ -190,6 +210,34 @@ module.exports.getKeys = (con, album, callback) => {
 		if (res.length <= 0) {
 			console.warn("No keys found.");
 			callback(null, []);
+			return;
+		}
+
+		callback(null, res);
+	});
+};
+
+module.exports.getKey = (con, id, callback) => {
+	if (!con) {
+		callback("INVALID_OR_BAD_CONNECTION", false);
+		return;
+	}
+
+	if (!utils.validateId(id)) {
+		callback("INVALID_ID", false);
+		return;
+	}
+
+	con.query(queryGetById(), [id], (qerr, res) => {
+		if (qerr || !res) {
+			console.error(qerr);
+			callback("GET_TOKEN_FAILED", false);
+			return;
+		}
+
+		if (res.length <= 0) {
+			console.error("ERROR: Key not found.");
+			callback("KEY_NOT_FOUND", false);
 			return;
 		}
 

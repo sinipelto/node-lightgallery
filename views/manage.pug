@@ -28,8 +28,11 @@ body
 							th ID
 							th Album
 							th Value
+							th Initial Usages
+							th Usages Left
 							th Usages
 							th Created
+							th
 							th
 							th
 					tbody
@@ -39,12 +42,16 @@ body
 								td
 									a(href=`${token.album}?key=${token.value}`, target="_blank") #{token.album}
 								td= token.value
+								td= token.usages_init
+								td= token.usages_left
 								td= token.usages
 								td= token.created.toLocaleString()
 								td
 									button(onclick=`revokeKey(${token.id});`).btn.btn-warning Revoke
 								td
 									button(onclick=`deleteKey(${token.id});`).btn.btn-danger Delete
+								td
+									button(onclick=`infoKey(${token.id});`).btn.btn-info Activity
 
 			br
 			br
@@ -66,7 +73,7 @@ body
 						p#errorUsageCreate
 						br
 						br
-						button(onclick="createKey();").btn.btn-primary Create New Key
+						button(onclick="createKey();").btn.btn-success Create New Key
 					.col
 						h1 Update an existing token:
 						label(for="keyIdUpdate") Token ID:
@@ -81,7 +88,7 @@ body
 						p#errorUsageUpdate
 						br
 						br
-						button(onclick="updateKey();").btn.btn-secondary Update Key
+						button(onclick="updateKey();").btn.btn-primary Update Key
 
 	script(type="text/javascript").
 		const AUTH_KEY = "#{key}";
