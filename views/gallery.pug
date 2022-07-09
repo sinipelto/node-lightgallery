@@ -31,16 +31,16 @@ body
 
 						if media[i].type == 'video'
 							- var path = `${gallery_path}/${media[i].name}?key=${key}`;
-							- var data = {'source': [{'src': path, 'type': media[i].format }], 'attributes': {'preload': false, 'controls': true}};
-							.item.col(data-video=`${JSON.stringify(data)}`, data-external-thumb-image=`/static/video_icon.jpg`)
-								img.img-thumbnail(src=`/static/video_icon.jpg`)
+							- var data = {'source': [{'src': path, 'type': media[i].format }], 'attributes': {'preload': false, 'playsinline': false, 'controls': true}};
+							.item.col(data-video=`${JSON.stringify(data)}`, data-external-thumb-image=`${gallery_path}/thumbnails/${media[i].name}.png?key=${key}`)
+								img.img-thumbnail(src=`${gallery_path}/thumbnails/${media[i].name}.png?key=${key}`)
 
 						else if media[i].type == 'image'
 							.item.col(data-src=`${gallery_path}/${media[i].name}?key=${key}`, data-external-thumb-image=`${gallery_path}/thumbnails/${media[i].name}?key=${key}`)
 								img.img-thumbnail(src=`${gallery_path}/thumbnails/${media[i].name}?key=${key}`)
 
 						else
-							p.col ERROR
+							p.col INVALID MEDIA
 						- i++; j++;
 
 	// Video.js
