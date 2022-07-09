@@ -37,14 +37,16 @@ body
 	script(src="plugins/autoplay/lg-autoplay.min.js")
 	script(src="plugins/thumbnail/lg-thumbnail.min.js")
 	script(src="plugins/zoom/lg-zoom.min.js")
+	script(src="plugins/video/lg-video.min.js")
 
 	// Lightgallery configuration
 	script(type="text/javascript").
 		lightGallery(document.getElementById('lightgallery'), {
 			selector: '.item',
-			plugins: [lgZoom, lgThumbnail, lgAutoplay],
+			plugins: [lgZoom, lgThumbnail, lgAutoplay, lgVideo],
 			exThumbImage: 'data-external-thumb-image',
 			thumbnail: true,
-			preload: 1,
+			videojs: true,
+			preload: false,
 			speed: 500
 		});
