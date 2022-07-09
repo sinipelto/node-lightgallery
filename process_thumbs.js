@@ -1,7 +1,9 @@
-const utils = require('./utils');
+const utils = require('./utils.js');
 
 const fs = require('fs');
 const sharp = require('sharp');
+
+const thumbler = require('video-thumb');
 
 const createThumbs = (path, thumbPath, width = 100, height = 100) => {
 	fs.readdir(path, (err, files) => {
@@ -16,17 +18,30 @@ const createThumbs = (path, thumbPath, width = 100, height = 100) => {
 
 		var i = 0;
 		files.forEach((val) => {
-			sharp(`${path}/${val}`)
-				.resize(width, height)
-				.withMetadata() // IMPORTANT!! Preserve Exif, rotation, orientation, etc.
-				.toFile(`${thumbPath}/${val}`)
-				.then(() => {
-					i++;
-					if (i >= files.length) console.log("Generating thumbnails done!");
-				})
-				.catch((error) => {
-					console.error("ERROR: Failed while processing thumbnails:", error);
+			const ext = utils.getFileExtension(val);
+			if (utils.imageTypes.includes(ext)) {
+				sharp(`${path}/${val}`)
+					.resize(width, height)
+					.withMetadata() // IMPORTANT!! Preserve Exif, rotation, orientation, etc.
+					.toFile(`${thumbPath}/${val}`)
+					.then(() => {
+						i++;
+						if (i >= files.length) console.log("Generating thumbnails done!");
+					})
+					.catch((error) => {
+						console.error("ERROR: Failed while processing thumbnails.");
+						console.debug(error);
+					});
+			} else if (utils.videoTypes.includes(ext)) {
+				thumbler.extract(`${path}/${val}`, `${thumbPath}/${val}.png`, '00:00:00', '100x100', (err) => {
+					if (err) {
+						console.error("ERROR: Unexpected error during thumbnail generation for video.");
+						console.debug(err);
+					}
 				});
+			} else {
+				console.warn("WARNING: Unknown file type, omitting.");
+			}
 		});
 	});
 };
@@ -39,6 +54,11 @@ const processThumbs = (path, thumbPath, width, height) => {
 		}
 
 		fs.readdir(thumbPath, (err, files) => {
+			if (err) {
+				console.error("ERROR: Unexpected error during old thumbnails processing:", err);
+				throw err;
+			}
+
 			if (files.length <= 0) {
 				console.log("No previous thumbnails found.");
 				createThumbs(path, thumbPath, width, height);
@@ -48,9 +68,9 @@ const processThumbs = (path, thumbPath, width, height) => {
 			console.log("Deleting old thumbnails..");
 
 			for (var i = 0; i < files.length; i++) {
-				fs.unlink(`${thumbPath}/${files[i]}`, (err) => {
-					if (err) {
-						console.error("ERROR: Failed to remove old thumbnail:", err);
+				fs.unlink(`${thumbPath}/${files[i]}`, (erro) => {
+					if (erro) {
+						console.error("ERROR: Failed to remove old thumbnail:", erro);
 						return;
 					}
 				});
@@ -83,7 +103,7 @@ module.exports.processThumbnails = (path, width, height) => {
 
 		fs.exists(thumbPath, (ex) => {
 			if (!ex) {
-				fs.mkdir(thumbPath, { 'recursive': false, 'mode': 0750 }, (err) => {
+				fs.mkdir(thumbPath, { 'recursive': false, 'mode': 0755 }, (err) => {
 					if (err) {
 						console.error("ERROR: Failed to create thumbnails directory:", err);
 						return;

@@ -5,9 +5,10 @@ include _header.pug
 include _jq.pug
 include _bs.pug
 
-	link(type="text/css", rel="stylesheet", href="css/lightgallery-bundle.min.css")
-	link(type="text/css", rel="stylesheet", href="static/style.css")
-	title= meta.title
+link(type="text/css", rel="stylesheet", href="/videojs/video-js.min.css")
+link(type="text/css", rel="stylesheet", href="/lightgallery/css/lightgallery-bundle.min.css")
+
+title= meta.title
 
 body
 	#gallery
@@ -17,34 +18,52 @@ body
 			p.lead.
 				#{meta.description}
 		#lightgallery.container.album
+
 			- var i = 0;
 			- var j = 0;
-			- var max = photos.length;
+			- var max = media.length;
 
 			while i < max
 				- j = 0;
+
 				.row
 					while i < max && j < 6
-						.item.col(data-src=`${gallery_path}/${photos[i]}?key=${key}`, data-external-thumb-image=`${gallery_path}/thumbnails/${photos[i]}?key=${key}`)
-							img.img-thumbnail(src=`${gallery_path}/thumbnails/${photos[i]}?key=${key}`)
+
+						if media[i].type == 'video'
+							- var path = `${gallery_path}/${media[i].name}?key=${key}`;
+							- var data = {'source': [{'src': path, 'type': media[i].format }], 'attributes': {'preload': false, 'playsinline': false, 'controls': true}};
+							.item.col(data-video=`${JSON.stringify(data)}`, data-external-thumb-image=`${gallery_path}/thumbnails/${media[i].name}.png?key=${key}`)
+								img.img-thumbnail(src=`${gallery_path}/thumbnails/${media[i].name}.png?key=${key}`)
+
+						else if media[i].type == 'image'
+							.item.col(data-src=`${gallery_path}/${media[i].name}?key=${key}`, data-external-thumb-image=`${gallery_path}/thumbnails/${media[i].name}?key=${key}`)
+								img.img-thumbnail(src=`${gallery_path}/thumbnails/${media[i].name}?key=${key}`)
+
+						else
+							p.col INVALID MEDIA
 						- i++; j++;
 
+	// Video.js
+	script(src="/videojs/video.min.js")
+
 	// Lightgallery main
-	script(src="js/lightgallery.min.js")
+	script(src="/lightgallery/lightgallery.min.js")
 
 	// Additional Lightgallery plugins
 	// NOTE: DONT USE PAGER PLUGIN - DISPLAYS BUTTONS BADLY!
-	script(src="plugins/autoplay/lg-autoplay.min.js")
-	script(src="plugins/thumbnail/lg-thumbnail.min.js")
-	script(src="plugins/zoom/lg-zoom.min.js")
+	script(src="/lightgallery/plugins/autoplay/lg-autoplay.min.js")
+	script(src="/lightgallery/plugins/thumbnail/lg-thumbnail.min.js")
+	script(src="/lightgallery/plugins/zoom/lg-zoom.min.js")
+	script(src="/lightgallery/plugins/video/lg-video.min.js")
 
 	// Lightgallery configuration
 	script(type="text/javascript").
 		lightGallery(document.getElementById('lightgallery'), {
 			selector: '.item',
-			plugins: [lgZoom, lgThumbnail, lgAutoplay],
+			plugins: [lgZoom, lgThumbnail, lgAutoplay, lgVideo],
 			exThumbImage: 'data-external-thumb-image',
 			thumbnail: true,
+			videojs: true,
 			preload: 1,
 			speed: 500
 		});

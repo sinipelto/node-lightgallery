@@ -4,28 +4,30 @@ String.prototype.leftTrim = function () { return this.replace(/^\s+/, ''); };
 
 String.prototype.newLineToHtml = function () { return this.replace(/(?:\r\n|\r|\n)/g, '<br>'); };
 
-const filterMedia = imags => {
-	return imags.filter(elem =>
-		typeof elem == 'string' && (
-			elem.toLowerCase().endsWith('.jpg') ||
-			elem.toLowerCase().endsWith('.jpeg') ||
-			elem.toLowerCase().endsWith('.png') ||
-			elem.toLowerCase().endsWith('.gif') ||
-			elem.toLowerCase().endsWith('.bmp') ||
-			elem.toLowerCase().endsWith('.mp4') ||
-			elem.toLowerCase().endsWith('.webm') ||
-			elem.toLowerCase().endsWith('.ogg') ||
-			elem.toLowerCase().endsWith('.tiff')
-		)
-	);
-};
+const imageTypes = [
+	'jpg',
+	'jpeg',
+	'png',
+	'gif',
+	'bmp',
+	'tiff',
+	'webp'
+];
 
-const defaultMeta = () => {
-	return {
-		"title": "Unnamed Album",
-		"description": "Metadata file was not found within the album."
-	};
-};
+const videoTypes = [
+	'mp4',
+	'webm',
+	'ogg'
+];
+
+const getFileExtension = (filename) => filename.toLowerCase().split('.').pop();
+
+const filterMedia = (imags) => imags.filter(elem => imageTypes.includes(getFileExtension(elem)) || videoTypes.includes(getFileExtension(elem)));
+
+const defaultMeta = () => ({
+	"title": "Unnamed Album",
+	"description": "Metadata file was not found within the album."
+});
 
 const validateId = (id) => (typeof id == 'number' && !isNaN(id) && id >= 0);
 
@@ -35,6 +37,9 @@ const validateKey = (key) => (typeof key == 'string' && key.length == TOKEN_LENG
 
 module.exports = {
 	String,
+	imageTypes,
+	videoTypes,
+	getFileExtension,
 	filterMedia,
 	defaultMeta,
 	validateId,
