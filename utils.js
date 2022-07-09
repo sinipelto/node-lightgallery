@@ -6,11 +6,12 @@ String.prototype.newLineToHtml = function () { return this.replace(/(?:\r\n|\r|\
 
 const imageTypes = [
 	'jpg',
-	'jepg',
+	'jpeg',
 	'png',
 	'gif',
 	'bmp',
-	'tiff'
+	'tiff',
+	'webp'
 ];
 
 const videoTypes = [
