@@ -12,6 +12,7 @@
 		"pug": "^3.0.2",
 		"request-ip": "^2.1.3",
 		"sharp": "^0.30.6",
+		"video-thumb": "^0.0.3",
 		"video.js": "^7.19.2"
 	},
 	"scripts": {
