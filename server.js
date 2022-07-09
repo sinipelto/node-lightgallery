@@ -302,12 +302,14 @@ app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 			unauthorized(err, res);
 		}
 		else {
-			fs.exists(photoFile, e => {
-				if (e) {
+			fs.access(photoFile, fs.constants.F_OK | fs.constants.R_OK, err => {
+				if (!err) {
 					res.sendFile(photoFile);
+				} else if (thumbUrl == '/thumbnails/') {
+					res.sendFile(__dirname + '/static/unavailable.webp');
 				} else {
 					console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
-					res.status(404).send("Requested photo was not found.");
+					res.status(404).send("Requested photo not found or unreadable.");
 				}
 			});
 		}
@@ -365,7 +367,7 @@ app.get('/:album', (req, res) => {
 								'name': files[i],
 								'type': mediaType,
 								'format': `${mediaType}/${fileExt}`
-							});				
+							});
 						}
 
 						res.render('gallery', {
