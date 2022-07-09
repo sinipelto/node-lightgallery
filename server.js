@@ -65,11 +65,8 @@ dbManager.initDatabase(dbProvider);
 app.use('/favicon.ico', express.static(__dirname + process.env.FAVICON_PATH));
 app.use('/static', express.static(__dirname + process.env.STATIC_DIR));
 
-app.use('/css', express.static(__dirname + '/node_modules/lightgallery/css'));
-app.use('/js', express.static(__dirname + '/node_modules/lightgallery'));
-app.use('/plugins', express.static(__dirname + '/node_modules/lightgallery/plugins'));
-app.use('/fonts', express.static(__dirname + '/node_modules/lightgallery/fonts'));
-app.use('/images', express.static(__dirname + '/node_modules/lightgallery/images'));
+app.use('/lightgallery', express.static(__dirname + '/node_modules/lightgallery'));
+app.use('/videojs', express.static(__dirname + '/node_modules/video.js/dist'));
 
 // PUG View engine middleware
 app.set('views', __dirname + '/views');
@@ -358,10 +355,23 @@ app.get('/:album', (req, res) => {
 							meta = utils.defaultMeta();
 						}
 
+						files = utils.filterMedia(files);
+
+						var media = [];
+						for (var i = 0; i < files.length; i++) {
+							const fileExt = utils.getFileExtension(files[i]);
+							const mediaType = utils.imageTypes.includes(fileExt) ? 'image' : 'video';
+							media.push({
+								'name': files[i],
+								'type': mediaType,
+								'format': `${mediaType}/${fileExt}`
+							});				
+						}
+
 						res.render('gallery', {
 							gallery_path: target_url,
-							photos: utils.filterMedia(files),
 							key: req.query.key,
+							media,
 							meta
 						});
 					});
