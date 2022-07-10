@@ -23,6 +23,9 @@ body
 			- var j = 0;
 			- var max = media.length;
 
+			- var width = meta.thumbWidth ?? 100;
+			- var height = meta.thumbHeight ?? 100;
+
 			while i < max
 				- j = 0;
 
@@ -33,7 +36,7 @@ body
 							- var path = `${gallery_path}/${media[i].name}?key=${key}`;
 							- var data = {'source': [{'src': path, 'type': media[i].format }], 'attributes': {'preload': false, 'playsinline': false, 'controls': true}};
 							.item.col(data-video=`${JSON.stringify(data)}`, data-external-thumb-image=`${gallery_path}/thumbnails/${media[i].name}.png?key=${key}`)
-								img.img-thumbnail(src=`${gallery_path}/thumbnails/${media[i].name}.png?key=${key}`)
+								img.img-thumbnail(src="/static/play_button.png", style=`background:url(${gallery_path}/thumbnails/${media[i].name}.png?key=${key}); background-size: cover;`, width=`${width}`, height=`${height}`)
 
 						else if media[i].type == 'image'
 							.item.col(data-src=`${gallery_path}/${media[i].name}?key=${key}`, data-external-thumb-image=`${gallery_path}/thumbnails/${media[i].name}?key=${key}`)
