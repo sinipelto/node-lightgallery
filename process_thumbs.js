@@ -5,7 +5,7 @@ const sharp = require('sharp');
 
 const thumbler = require('video-thumb');
 
-const createThumbs = (path, thumbPath, width = 100, height = 100) => {
+const createThumbs = (path, thumbPath, width = 100, height = 100, missingOnly = false) => {
 	fs.readdir(path, (err, files) => {
 		if (err) {
 			console.error("ERROR: Error reading image files:", err);
@@ -18,7 +18,14 @@ const createThumbs = (path, thumbPath, width = 100, height = 100) => {
 
 		var i = 0;
 		files.forEach((val) => {
+			if (missingOnly) {
+				if (fs.existsSync(`${thumbPath}/${val}`)) {
+					return;
+				}
+			}
+
 			const ext = utils.getFileExtension(val);
+
 			if (utils.imageTypes.includes(ext)) {
 				sharp(`${path}/${val}`)
 					.resize(width, height)
@@ -29,14 +36,14 @@ const createThumbs = (path, thumbPath, width = 100, height = 100) => {
 						if (i >= files.length) console.log("Generating thumbnails done!");
 					})
 					.catch((error) => {
-						console.error("ERROR: Failed while processing thumbnails.");
-						console.debug(error);
+						console.error("ERROR: while processing thumbnail.");
+						console.trace(error);
 					});
 			} else if (utils.videoTypes.includes(ext)) {
-				thumbler.extract(`${path}/${val}`, `${thumbPath}/${val}.png`, '00:00:00', '100x100', (err) => {
+				thumbler.extract(`${path}/${val}`, `${thumbPath}/${val}.png`, '00:00:00', `${width}x${height}`, (err) => {
 					if (err) {
 						console.error("ERROR: Unexpected error during thumbnail generation for video.");
-						console.debug(err);
+						console.trace(err);
 					}
 				});
 			} else {
@@ -46,7 +53,7 @@ const createThumbs = (path, thumbPath, width = 100, height = 100) => {
 	});
 };
 
-const processThumbs = (path, thumbPath, width, height) => {
+const processThumbs = (path, thumbPath, width, height, missingOnly) => {
 	fs.access(thumbPath, fs.constants.R_OK | fs.constants.W_OK, (err) => {
 		if (err) {
 			console.error("ERROR: Error accessing thumbnails path:", err);
@@ -61,29 +68,31 @@ const processThumbs = (path, thumbPath, width, height) => {
 
 			if (files.length <= 0) {
 				console.log("No previous thumbnails found.");
-				createThumbs(path, thumbPath, width, height);
+				createThumbs(path, thumbPath, width, height, missingOnly);
 				return;
 			}
 
-			console.log("Deleting old thumbnails..");
+			if (!missingOnly) {
+				console.log("Deleting old thumbnails..");
 
-			for (var i = 0; i < files.length; i++) {
-				fs.unlink(`${thumbPath}/${files[i]}`, (erro) => {
-					if (erro) {
-						console.error("ERROR: Failed to remove old thumbnail:", erro);
-						return;
-					}
-				});
+				for (var i = 0; i < files.length; i++) {
+					fs.unlink(`${thumbPath}/${files[i]}`, (erro) => {
+						if (erro) {
+							console.error("ERROR: Failed to remove old thumbnail:", erro);
+							return;
+						}
+					});
+				}
+
+				console.log("Deleting old thumbnails done!");
 			}
 
-			console.log("Deleting old thumbnails done!");
-
-			createThumbs(path, thumbPath, width, height);
+			createThumbs(path, thumbPath, width, height, missingOnly);
 		});
 	});
 };
 
-module.exports.processThumbnails = (path, width, height) => {
+module.exports.processThumbnails = (path, width, height, missingOnly) => {
 	if (!path) {
 		console.error("ERROR: Invalid path provided:", path);
 		return;
@@ -103,20 +112,18 @@ module.exports.processThumbnails = (path, width, height) => {
 
 		fs.exists(thumbPath, (ex) => {
 			if (!ex) {
-				fs.mkdir(thumbPath, { 'recursive': false, 'mode': 0755 }, (err) => {
+				fs.mkdir(thumbPath, { 'recursive': false, 'mode': 0775 }, (err) => {
 					if (err) {
 						console.error("ERROR: Failed to create thumbnails directory:", err);
-						return;
+						throw err;
 					}
-
 					console.log("Created thumbnails directory.");
-					processThumbs(path, thumbPath, width, height);
-					return;
 				});
+			} else {
+				console.log("Thumbnails dir already exists.");
 			}
 
-			console.log("Thumbnails dir already exists.");
-			processThumbs(path, thumbPath, width, height);
+			processThumbs(path, thumbPath, width, height, missingOnly);
 		});
 	});
 };
@@ -129,7 +136,7 @@ module.exports.processThumbnails = (path, width, height) => {
 const args = process.argv;
 
 const printHelp = () => {
-	console.log("Usage: node process_thumbs.js <path> <width> <height>");
+	console.log("Usage: node process_thumbs.js <path> [missing] <width> <height>");
 };
 
 if (args[2] == "help") {
@@ -137,20 +144,34 @@ if (args[2] == "help") {
 	process.exit(0);
 }
 
+let path;
+let missing;
+let width;
+let height;
+
 if (!args[2]) {
 	console.error("ERROR: No image path given as argument. Enter the path to the images to generate thumbnails from.");
 	printHelp();
 	process.exit(1);
 }
 
-if (!args[3]) {
-	console.warn("WARNING: No target image width for thumbnails given. Using default value.");
-	printHelp();
-}
+path = args[2];
+
+missing = args[3] === '1' || args[3].toLowerCase() === 'true' ? true : false;
 
 if (!args[4]) {
-	console.warn("WARNING: No target image height for thumbnails given. Using default value.");
+	console.warn("WARNING: No target image width for thumbnails given. Using default value.");
 	printHelp();
+} else {
+	width = args[4];
 }
 
-this.processThumbnails(args[2], args[3], args[4]);
+if (!args[5]) {
+	console.warn("WARNING: No target image height for thumbnails given. Using default value.");
+	printHelp();
+} else {
+	height = args[5];
+}
+
+console.log("Will process with arguments:", path, width, height, missing);
+this.processThumbnails(path, width, height, missing);
