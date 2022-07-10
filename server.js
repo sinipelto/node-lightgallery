@@ -357,7 +357,7 @@ app.get('/:album', (req, res) => {
 							meta = utils.defaultMeta();
 						}
 
-						files = utils.filterMedia(files);
+						files = utils.filterMedia(files).sort();
 
 						var media = [];
 						for (var i = 0; i < files.length; i++) {
