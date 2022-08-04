@@ -4,7 +4,6 @@ const activityManager = require('./activity.js');
 const fs = require('fs');
 const NodeCache = require('node-cache');
 
-const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages_init, usages_left, (usages_init - usages_left) as usages, created";
 const TOKEN_LENGTH = Number(process.env.TOKEN_LENGTH);
 const TABLE = process.env.TOKEN_TABLE;
 
@@ -21,13 +20,13 @@ if (CACHE_ENABLED === true) {
 	if (isNaN(CACHE_PERIOD)) {
 		throw "Invalid or missing value KEY_CACHE_CHECK_PERIOD. Check config.";
 	}
-	if (CACHE_CLONES === undefined) {
+	if (CACHE_CLONES === undefined || CACHE_CLONES == '') {
 		throw "Invalid value for CACHE_CLONES. Check config.";
 	}
-	if (CACHE_DELETE_EXPIRED === undefined || typeof CACHE_DELETE_EXPIRED !== 'boolean') {
+	if (CACHE_DELETE_EXPIRED === undefined || CACHE_DELETE_EXPIRED == '') {
 		throw "Invalid value for CACHE_DELETE_EXPIRED. Check config.";
 	}
-} else if (CACHE_ENABLED === undefined) {
+} else if (CACHE_ENABLED === undefined ||CACHE_ENABLED == '') {
 	throw "Invalid value for ENABLE_KEY_CACHE. Check config.";
 }
 
@@ -35,9 +34,11 @@ if (isNaN(TOKEN_LENGTH)) {
 	throw "Invalid key length. Check env var is set.";
 }
 
-if (!TABLE) {
+if (!TABLE || TABLE == '') {
 	throw "Invalid table name. Check env var is set.";
 }
+
+const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages_init, usages_left, (usages_init - usages_left) as usages, created";
 
 const queryGetAll = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ?" : ""};`;
 const queryGetAllExisting = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ? AND" : "WHERE"} deleted IS FALSE;`;

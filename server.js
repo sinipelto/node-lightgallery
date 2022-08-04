@@ -29,30 +29,31 @@ const requestIp = require('request-ip');
 
 // Init express
 const app = express();
+
 const host = process.env.NODE_HOST;
 const port = process.env.NODE_PORT;
-
-if (!host || isNaN(port)) {
-	throw "Host or port not set. Check env vars are set.";
-}
 
 const photoUrl = process.env.PHOTOS_URL;
 const photoPath = process.env.PHOTOS_PATH;
 
-if (!photoUrl || !photoPath) {
-	throw "Invalid photo url or photo path. Check env vars are set.";
-}
-
 const serviceName = process.env.SERVICE_NAME;
-
-if (!serviceName) {
-	throw "Invalid service name. Check env var is set.";
-}
 
 // Handle the log line limiting
 // Hard-coded max limit, overridable by the env var
 const defaultLogLineLimit = Number(process.env.LOG_LINE_LIMIT);
 const MAX_LOG_LINES = (defaultLogLineLimit > 1000000) ? defaultLogLineLimit : 1000000;
+
+if (!host || host == '' || isNaN(port)) {
+	throw "Host or port not set. Check env vars are set.";
+}
+
+if (!photoUrl || photoUrl == '' || !photoPath || photoPath == '') {
+	throw "Invalid photo url or photo path. Check env vars are set.";
+}
+
+if (!serviceName || serviceName == '') {
+	throw "Invalid service name. Check env var is set.";
+}
 
 if (isNaN(defaultLogLineLimit) || defaultLogLineLimit <= 0) {
 	throw "Invalid log line limit. Check env var is set.";
