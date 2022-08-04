@@ -37,15 +37,6 @@ module.exports.getActivity = (con, tokenId, limit, callback) => {
 			return;
 		}
 
-		// Should NEVER occur!
-		if (tres.length > 1) {
-			console.error("ERROR: Multiple key matches found.");
-			callback("MULTIPLE_KEY_MATCHES", false);
-			return;
-		}
-
-		trow = tres[0];
-
 		con.query(queryGetAll(true, true), [tokenId, limit], (qerr, res) => {
 			if (qerr || !res) {
 				console.error("ERROR: Failed to get activity data:", qerr);
@@ -54,13 +45,13 @@ module.exports.getActivity = (con, tokenId, limit, callback) => {
 			}
 
 			if (res.length <= 0) {
-				console.warn("No activity found for token id:", trow.id);
+				console.warn("No activity found for token id:", tres.id);
 				callback(null, []);
 				return;
 			}
 
 			for (var i = 0; i < res.length; i++) {
-				res[i].token = trow;
+				res[i].token = tres;
 			}
 
 			callback(null, res);
