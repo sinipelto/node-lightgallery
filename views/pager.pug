@@ -1,0 +1,30 @@
+nav#pager
+	- var pP = "Previous Page";
+	- var pN = "Next Page";
+	- var n = 1;
+
+	ul.pagination.pagination-lg.justify-content-center.flex-wrap
+		if page <= 1
+			li.page-item.disabled
+				a.page-link(href="#" aria-label=pP aria-disabled="true")
+					span(aria-hidden="true") &laquo;
+		else
+			li.page-item
+				a.page-link(href=`${album_path}?key=${key}&page=${page - 1}` aria-label=pP)
+					span(aria-hidden="true") &laquo;
+		while n <= pages
+			if n == page
+				li.page-item.active
+					a.page-link(href=`${album_path}?key=${key}&page=${n}`)= n
+			else
+				li.page-item
+					a.page-link(href=`${album_path}?key=${key}&page=${n}`)= n
+			- n++;
+		if page >= pages
+			li.page-item.disabled
+				a.page-link(href="#" aria-label=pN aria-disabled="true")
+					span(aria-hidden="true") &raquo;
+		else
+			li.page-item 
+				a.page-link(href=href=`${album_path}?key=${key}&page=${page + 1}` aria-label=pN)
+					span(aria-hidden="true") &raquo;

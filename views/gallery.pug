@@ -5,19 +5,20 @@ include _header.pug
 include _jq.pug
 include _bs.pug
 
-link(type="text/css", rel="stylesheet", href="/videojs/video-js.min.css")
-link(type="text/css", rel="stylesheet", href="/lightgallery/css/lightgallery-bundle.min.css")
+link(type="text/css" rel="stylesheet" href="/videojs/video-js.min.css")
+link(type="text/css" rel="stylesheet" href="/lightgallery/css/lightgallery-bundle.min.css")
 
 title= meta.title
 
 body
 	#gallery
-		.jumbotron.text-center
-			.container
-				h1.jumbotron-heading #{meta.title}
-			p.lead.
-				#{meta.description}
+		.jumbotron.jumbotron-fluid.text-center
+			.container.container-fluid
+				h1.display-4 #{meta.title}
+			p.lead #{meta.description}
+
 		#lightgallery.container.album
+			include pager.pug
 
 			- var i = 0;
 			- var j = 0;
@@ -45,6 +46,9 @@ body
 						else
 							p.col INVALID MEDIA
 						- i++; j++;
+
+			br
+			include pager.pug
 
 	// Video.js
 	script(src="/videojs/video.min.js")

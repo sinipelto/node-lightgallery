@@ -38,6 +38,8 @@ const photoPath = process.env.PHOTOS_PATH;
 
 const serviceName = process.env.SERVICE_NAME;
 
+const PAGE_LIMIT = Number(process.env.PAGE_LIMIT);
+
 // Handle the log line limiting
 // Hard-coded max limit, overridable by the env var
 const defaultLogLineLimit = Number(process.env.LOG_LINE_LIMIT);
@@ -57,6 +59,10 @@ if (!serviceName || serviceName == '') {
 
 if (isNaN(defaultLogLineLimit) || defaultLogLineLimit <= 0) {
 	throw "Invalid log line limit. Check env var is set.";
+}
+
+if (isNaN(PAGE_LIMIT) || PAGE_LIMIT <= 0) {
+	throw "Invalid page limit. Check env var PAGE_LIMIT is set and correct.";
 }
 
 // Init the DB (create tables, etc.) for first use
@@ -327,9 +333,18 @@ app.get('/:album', (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	const url = '/' + req.params.album;
-	const target_url = photoUrl + url;
-	const target_path = photoPath + url;
+	const album_url = '/' + req.params.album;
+	const target_url = photoUrl + album_url;
+	const target_path = photoPath + album_url;
+
+	// Current page
+	var page = Number(req.query.page);
+	page = (page != null && !isNaN(page) && page > 0) ? parseInt(page, 10) : 1;
+
+	// Hardcoded limit for items per page
+	// Maybe allow user input within safe limits (1 <= x <= 100)?
+	// NOTE: Match with the columns in gallery page (LIMIT % cols_per_row == 0)
+	const LIMIT = PAGE_LIMIT;
 
 	fs.access(target_path, fs.constants.R_OK | fs.constants.X_OK, err => {
 		if (err) {
@@ -337,7 +352,7 @@ app.get('/:album', (req, res) => {
 			console.error(err);
 			res.status(404).send("The album you were looking for was not found. Please double check the URL address is correct.");
 		} else {
-			tokenManager.verifyKey(dbPool, url, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+			tokenManager.verifyKey(dbPool, album_url, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					unauthorized(err, res);
@@ -368,9 +383,33 @@ app.get('/:album', (req, res) => {
 						}
 
 						files = utils.filterMedia(files).sort();
+						const flen = files.length;
+
+						var pages;
+						var pageLimit;
+						if (flen > LIMIT) {
+							pageLimit = LIMIT;
+							pages = Math.floor(flen / LIMIT);
+							const over = flen % LIMIT;
+							if (over > 0) {
+								pages += 1;
+							}
+						} else { // length <= LIMIT
+							page = 1;
+							pages = 1;
+							pageLimit = flen;
+						}
+
+						// Ensure current page within limits
+						if (page < 1) page = 1;
+						if (page > pages) page = pages;
 
 						var media = [];
-						for (var i = 0; i < files.length; i++) {
+
+						const start = ((page - 1) * pageLimit);
+						const end = (page == pages) ? flen : (page * pageLimit);
+
+						for (var i = start; i < end; i++) {
 							const fileExt = utils.getFileExtension(files[i]);
 							const mediaType = utils.imageTypes.includes(fileExt) ? 'image' : 'video';
 							media.push({
@@ -381,9 +420,12 @@ app.get('/:album', (req, res) => {
 						}
 
 						res.render('gallery', {
+							album_path: album_url,
 							gallery_path: target_url,
 							key: req.query.key,
 							media,
+							page,
+							pages,
 							meta
 						});
 					});
