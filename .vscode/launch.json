@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
             "name": "Debug Server",
             "skipFiles": [
@@ -13,8 +13,17 @@
             ],
             "program": "${workspaceFolder}\\server.js"
         },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Current File",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${cwd}\\${file}"
+        },
 		{
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
             "name": "Run thumbnails",
             "skipFiles": [
@@ -22,6 +31,5 @@
             ],
             "program": "${workspaceFolder}\\process_thumbs.js"
         }
-
     ]
 }
