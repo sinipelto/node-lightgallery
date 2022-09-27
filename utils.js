@@ -35,6 +35,10 @@ const validateLimit = (value) => (typeof value == 'number' && !isNaN(value) && v
 
 const validateKey = (key) => (typeof key == 'string' && key.length == TOKEN_LENGTH);
 
+const validateAlbum = (album) => (typeof album == 'string' && album.startsWith('/'));
+
+const validateUsages = (usages) => (typeof usages == 'number' && !isNaN(usages) && usages >= 0);
+
 module.exports = {
 	String,
 	imageTypes,
@@ -45,4 +49,6 @@ module.exports = {
 	validateId,
 	validateLimit,
 	validateKey,
+	validateAlbum,
+	validateUsages,
 };
