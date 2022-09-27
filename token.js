@@ -26,7 +26,7 @@ if (CACHE_ENABLED === true) {
 	if (CACHE_DELETE_EXPIRED === undefined || CACHE_DELETE_EXPIRED == '') {
 		throw "Invalid value for CACHE_DELETE_EXPIRED. Check config.";
 	}
-} else if (CACHE_ENABLED === undefined ||CACHE_ENABLED == '') {
+} else if (CACHE_ENABLED === undefined || CACHE_ENABLED == '') {
 	throw "Invalid value for ENABLE_KEY_CACHE. Check config.";
 }
 
@@ -49,9 +49,6 @@ const queryNew = () => `INSERT INTO ${TABLE} (album, usages_init, usages_left) V
 const queryUpdate = (reset) => `UPDATE ${TABLE} SET ${reset ? "usages_init = ?," : ""} usages_left = ? WHERE id = ? AND deleted IS FALSE;`;
 const queryDelete = (filter) => `UPDATE ${TABLE} SET deleted = TRUE ${filter ? "WHERE " + filter + " = ? AND" : "WHERE"} deleted IS FALSE;`;
 
-const validateAlbum = (album) => (typeof album == 'string' && album.startsWith('/'));
-const validateUsages = (usages) => (typeof usages == 'number' && !isNaN(usages) && usages >= 0);
-
 const keyCache = new NodeCache({
 	stdTTL: CACHE_TTL,
 	checkperiod: CACHE_PERIOD,
@@ -70,20 +67,39 @@ module.exports.verifyKey = (con, album, key, info, callback, consume = true) => 
 		return;
 	}
 
-	if (!validateAlbum(album)) {
+	if (!utils.validateAlbum(album)) {
 		callback("INVALID_ALBUM", false);
 		return;
 	}
 
+	var cachedKey = null;
 	// If consuming key, we need to query it anyway
-	// If cache enabled, and key found in cache and it matches, simply resp auth ok
-	if (!consume && CACHE_ENABLED && keyCache.has(key) && keyCache.get(key).value == key) {
-		console.debug("Found matching key in cache.");
-		callback(null, true);
-		return;
+	// Token collisions practically impossible => use the validated key as cache key
+	// If cache enabled, and token found in cache, matches the album, not incorrect, simply resp auth ok
+	// If matching key is invalid, immediate return error => avoid unnecessary DB queries
+	// Highly unlikely a key with a value in invalid keys list will be generated within the cache TTL / check interval
+	if (CACHE_ENABLED) {
+		if (keyCache.has(key)) {
+			cachedKey = keyCache.get(key);
+			if (cachedKey.album == album) {
+				if (cachedKey.incorrect) {
+					// console.debug("Key in cache, is incorrect.");
+					callback("INCORRECT_KEY", false);
+					return;
+				}
+				if (cachedKey.value == key) {
+					// console.debug("Found matching key for the album in cache. Verification ok.");
+					if (!consume) {
+						callback(null, true);
+						return;
+					}
+				}
+			}
+		}
 	}
 
-	con.query(queryGetValid(), [album, key], (qerr, res) => {
+	// Separate callback for better flow handling
+	const handleKey = (qerr, res) => {
 		if (qerr || !res) {
 			console.error(qerr);
 			callback(qerr, false);
@@ -92,8 +108,12 @@ module.exports.verifyKey = (con, album, key, info, callback, consume = true) => 
 
 		// No keys found with query
 		if (res.length <= 0) {
-			console.error("Matching key not found.");
-			callback("KEY_MATCH_NOT_FOUND", false);
+			if (CACHE_ENABLED) {
+				// Key obj does not exist => create new custom object with requried attributes
+				keyCache.set(key, { 'incorrect': true, 'album': album, value: key });
+			}
+			console.error(`Matching key not found. Album: ${album} Key: ${key}`);
+			callback("INCORRECT_KEY", false);
 			return;
 		}
 
@@ -105,11 +125,13 @@ module.exports.verifyKey = (con, album, key, info, callback, consume = true) => 
 			return;
 		}
 
+		// res = array with 1 element
 		row = res[0];
 
 		if (CACHE_ENABLED) {
-			keyCache.set(row.value, row);
+			// Set both value and ID as keys, to match both in later queries
 			keyCache.set(row.id, row);
+			keyCache.set(row.value, row);
 		}
 
 		if (consume) {
@@ -135,11 +157,18 @@ module.exports.verifyKey = (con, album, key, info, callback, consume = true) => 
 				callback("KEY_VERIFICATION_MISMATCH", false);
 				return;
 			});
+
 			return;
 		}
 
 		callback(null, true);
-	});
+	};
+
+	if (cachedKey) {
+		handleKey(null, [cachedKey]);
+	} else {
+		con.query(queryGetValid(), [album, key], handleKey);
+	}
 };
 
 module.exports.createKey = (con, album, usages, callback) => {
@@ -148,12 +177,12 @@ module.exports.createKey = (con, album, usages, callback) => {
 		return;
 	}
 
-	if (!validateAlbum(album)) {
+	if (!utils.validateAlbum(album)) {
 		callback("INVALID_ALBUM", false);
 		return;
 	}
 
-	if (!validateUsages(usages)) {
+	if (!utils.validateUsages(usages)) {
 		callback("INVALID_USAGES", false);
 		return;
 	}
@@ -180,7 +209,7 @@ module.exports.updateKey = (con, id, usages, callback, reset = false) => {
 		return;
 	}
 
-	if (!validateUsages(usages)) {
+	if (!utils.validateUsages(usages)) {
 		callback("INVALID_USAGES", false);
 		return;
 	}
@@ -188,7 +217,7 @@ module.exports.updateKey = (con, id, usages, callback, reset = false) => {
 	con.query(queryUpdate(reset), reset ? [usages, usages, id] : [usages, id], (qerr, res) => {
 		if (qerr || !res) {
 			console.error("ERROR: Failed to update key:", qerr);
-			callback("UPDATE_FAILED", false);
+			callback(reset ? "KEY_RESET_FAILED" : "KEY_UPDATE_FAILED", false);
 			return;
 		}
 
@@ -239,7 +268,7 @@ module.exports.getKeys = (con, album, callback) => {
 
 	// album == null => all albums
 	// album != null -> validate album value
-	if (album != null && !validateAlbum(album)) {
+	if (album != null && !utils.validateAlbum(album)) {
 		callback("INVALID_ALBUM", false);
 		return;
 	}
@@ -274,6 +303,7 @@ module.exports.getKey = (con, id, callback) => {
 
 	if (CACHE_ENABLED && keyCache.has(id)) {
 		const entry = keyCache.get(id);
+		// Should never occur
 		if (entry.id !== id) {
 			callback("KEY_CACHE_ID_MISMATCH", false);
 			return;
@@ -303,6 +333,12 @@ module.exports.getKey = (con, id, callback) => {
 		}
 
 		row = res[0];
+
+		// Update/refresh cache on successful fetch
+		if (CACHE_ENABLED) {
+			keyCache.set(row.id, row);
+			keyCache.set(row.value, row);
+		}
 
 		callback(null, row);
 	});
