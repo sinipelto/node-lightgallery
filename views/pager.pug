@@ -15,7 +15,7 @@ nav#pager
 		while n <= pages
 			if n == page
 				li.page-item.active
-					a.page-link(href=`${album_path}?key=${key}&page=${n}`)= n
+					a.page-link(href="#" aria-current="Current Page")= n
 			else
 				li.page-item
 					a.page-link(href=`${album_path}?key=${key}&page=${n}`)= n
