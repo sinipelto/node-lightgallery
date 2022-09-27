@@ -85,7 +85,7 @@ const unauthorized = (err, res) => {
 		.status(401)
 		.send("Invalid auth key provided." +
 			" Ensure parameter 'key' in the URL is set and is correct." +
-			"<br><br>DEBUG INFO: " + err
+			"<br><br>Additional info: " + err
 		);
 };
 
@@ -121,30 +121,35 @@ app.get(route_logs, (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, route_logs, req.query.key, { 'address': req.clientIp }, (err, ok) => {
-		if (err || !ok) {
-			console.error(err);
-			unauthorized(err, res);
-		}
-		else {
-			try {
-				const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
-				const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
-
-				exec(`journalctl -u ${serviceName} | tail -${limit}`, (err, stdout, stderr) => {
-					if (err) {
-						console.error("Failed to execute command:", err);
-						res.status(500).send("ERROR: Failed to retrieve logs.");
-					} else {
-						res.send("STDOUT:<br><br>" + stdout.newLineToHtml() + "<br><br><br>" + "STDERR:<br><br>" + stderr.newLineToHtml());
-					}
-				});
-			} catch (cerr) {
-				console.error("Failed to retrieve logs:", cerr);
-				res.status(500).send("ERROR: Failed to retrieve logs.");
+	if (process.platform != 'linux' && process.platform != "darwin") {
+		console.error("Platform not linux or darwin. Cannot proceed.");
+		res.status(400).send("ERROR: Invalid host platform.");
+	} else {
+		tokenManager.verifyKey(dbPool, route_logs, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+			if (err || !ok) {
+				console.error(err);
+				unauthorized(err, res);
 			}
-		}
-	});
+			else {
+				try {
+					const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
+					const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
+
+					exec(`journalctl -u ${serviceName} | tail -${limit}`, (err, stdout, stderr) => {
+						if (err) {
+							console.error("Failed to execute command:", err);
+							res.status(500).send("ERROR: Failed to retrieve logs.");
+						} else {
+							res.send("STDOUT:<br><br>" + stdout.newLineToHtml() + "<br><br><br>" + "STDERR:<br><br>" + stderr.newLineToHtml());
+						}
+					});
+				} catch (cerr) {
+					console.error("Failed to retrieve logs:", cerr);
+					res.status(500).send("ERROR: Failed to retrieve logs.");
+				}
+			}
+		});
+	}
 });
 
 app.get(route_activity + '/' + ':id', (req, res) => {
@@ -326,8 +331,12 @@ app.get('/:album', (req, res) => {
 	const target_url = photoUrl + url;
 	const target_path = photoPath + url;
 
-	fs.exists(target_path, e => {
-		if (e) {
+	fs.access(target_path, fs.constants.R_OK | fs.constants.X_OK, err => {
+		if (err) {
+			console.error("ERROR: Cannot properly access path:", target_path);
+			console.error(err);
+			res.status(404).send("The album you were looking for was not found. Please double check the URL address is correct.");
+		} else {
 			tokenManager.verifyKey(dbPool, url, req.query.key, { 'address': req.clientIp }, (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
@@ -380,8 +389,6 @@ app.get('/:album', (req, res) => {
 					});
 				});
 			});
-		} else {
-			res.status(404).send("The album you were looking for was not found. Please double check the URL.");
 		}
 	});
 });
