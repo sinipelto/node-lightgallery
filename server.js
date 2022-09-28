@@ -26,6 +26,7 @@ const fs = require('fs');
 const express = require('express');
 const { exec } = require('child_process');
 const requestIp = require('request-ip');
+const userAgent = require('express-useragent');
 
 // Init express
 const app = express();
@@ -85,6 +86,9 @@ app.use(express.json());
 // Middleware for handling request ip
 app.use(requestIp.mw());
 
+// Middleware for user-agent
+app.use(userAgent.express());
+
 // Define a generic way of responding to unauthorized requests
 const unauthorized = (err, res) => {
 	return res
@@ -93,6 +97,13 @@ const unauthorized = (err, res) => {
 			" Ensure parameter 'key' in the URL is set and is correct." +
 			"<br><br>Additional info: " + err
 		);
+};
+
+const getUserData = (req) => {
+	return {
+		'address': req.clientIp,
+		'userAgent': req.userAgent,
+	};
 };
 
 // Initiate a DB connection pool for accessing the DB consistently & reliably
@@ -108,7 +119,7 @@ app.get(route_root, (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, route_root, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_root, req.query.key, getUserData(req), (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -131,7 +142,7 @@ app.get(route_logs, (req, res) => {
 		console.error("Platform not linux or darwin. Cannot proceed.");
 		res.status(400).send("ERROR: Invalid host platform.");
 	} else {
-		tokenManager.verifyKey(dbPool, route_logs, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+		tokenManager.verifyKey(dbPool, route_logs, req.query.key, getUserData(req), (err, ok) => {
 			if (err || !ok) {
 				console.error(err);
 				unauthorized(err, res);
@@ -140,8 +151,9 @@ app.get(route_logs, (req, res) => {
 				try {
 					const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
 					const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
+					const filter = (req.query.filter != null) ? req.query.filter : null;
 
-					exec(`journalctl -u ${serviceName} | tail -${limit}`, (err, stdout, stderr) => {
+					exec(`journalctl -u ${serviceName} | tail -${limit} ${filter ? "| grep 'filter'" : ""}`, (err, stdout, stderr) => {
 						if (err) {
 							console.error("Failed to execute command:", err);
 							res.status(500).send("ERROR: Failed to retrieve logs.");
@@ -166,7 +178,7 @@ app.get(route_activity + '/' + ':id', (req, res) => {
 	const tokenId = (req.params.id != null) ? Number(req.params.id) : NaN;
 	const limit = (req.query.limit != null) ? Number(req.query.limit) : 300;
 
-	tokenManager.verifyKey(dbPool, route_management, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_management, req.query.key, getUserData(req), (err, ok) => {
 		if (err || !ok) {
 			console.error("ERROR: Failed to verify key:", err);
 			unauthorized(err, res);
@@ -193,7 +205,7 @@ app.get(route_management, (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	tokenManager.verifyKey(dbPool, route_management, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_management, req.query.key, getUserData(req), (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -220,7 +232,7 @@ app.post(route_management, (req, res) => {
 	console.log("REQ PARAMS:", req.params);
 	console.log("REQ BODY:", req.body);
 
-	tokenManager.verifyKey(dbPool, route_management, req.body.key, { 'address': req.clientIp }, (err, ok) => {
+	tokenManager.verifyKey(dbPool, route_management, req.body.key, getUserData(req), (err, ok) => {
 		if (err || !ok) {
 			console.error(err);
 			unauthorized(err, res);
@@ -307,7 +319,7 @@ app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 	const photoFile = photoPath + albumUrl + thumbUrl + fileUrl;
 
 	// We can first verify the key since it does NOT consume in here
-	tokenManager.verifyKey(dbPool, albumUrl, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+	tokenManager.verifyKey(dbPool, albumUrl, req.query.key, getUserData(req), (err, ok) => {
 		if (err || !ok) {
 			console.error(`FAILED TO GET ${req.path} [${req.clientIp}]`);
 			console.error(err);
@@ -352,7 +364,7 @@ app.get('/:album', (req, res) => {
 			console.error(err);
 			res.status(404).send("The album you were looking for was not found. Please double check the URL address is correct.");
 		} else {
-			tokenManager.verifyKey(dbPool, album_url, req.query.key, { 'address': req.clientIp }, (err, ok) => {
+			tokenManager.verifyKey(dbPool, album_url, req.query.key, getUserData(req), (err, ok) => {
 				if (err || !ok) {
 					console.error(err);
 					unauthorized(err, res);
