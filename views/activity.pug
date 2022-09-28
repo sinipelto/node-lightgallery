@@ -38,6 +38,7 @@ body
 							th Token Album
 							th Token
 							th IP Address
+							th User Agent
 							th Visited
 					tbody
 						each value in data
@@ -48,4 +49,5 @@ body
 									a(href=`${value.token.album}?key=${value.token.value}`, target="_blank") #{value.token.album}
 								td= value.token.value
 								td= value.address
+								td= value.user_agent
 								td= value.created.toLocaleString()
