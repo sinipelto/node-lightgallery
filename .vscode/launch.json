@@ -29,6 +29,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
+			"args": ["/path/to/dir", "recreate(1/0)", "width", "height"],
             "program": "${workspaceFolder}\\process_thumbs.js"
         }
     ]
