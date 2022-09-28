@@ -151,9 +151,9 @@ app.get(route_logs, (req, res) => {
 				try {
 					const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
 					const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
-					const filter = (req.query.filter != null) ? req.query.filter : null;
+					const filter = (req.query.filter != null && req.query.filter != '') ? req.query.filter.replace("|", "").replace(">", "").replace("<", "") : null;
 
-					exec(`journalctl -u ${serviceName} | tail -${limit} ${filter ? "| grep 'filter'" : ""}`, (err, stdout, stderr) => {
+					exec(`journalctl -u ${serviceName} | tail -${limit} ${filter ? `| grep '${filter}'` : ""}`, (err, stdout, stderr) => {
 						if (err) {
 							console.error("Failed to execute command:", err);
 							res.status(500).send("ERROR: Failed to retrieve logs.");
@@ -175,15 +175,15 @@ app.get(route_activity + '/' + ':id', (req, res) => {
 	console.log("REQ QUERY:", req.query);
 	console.log("REQ PARAMS:", req.params);
 
-	const tokenId = (req.params.id != null) ? Number(req.params.id) : NaN;
-	const limit = (req.query.limit != null) ? Number(req.query.limit) : 300;
-
 	tokenManager.verifyKey(dbPool, route_management, req.query.key, getUserData(req), (err, ok) => {
 		if (err || !ok) {
 			console.error("ERROR: Failed to verify key:", err);
 			unauthorized(err, res);
 			return;
 		}
+
+		const tokenId = (req.params.id != null) ? Number(req.params.id) : NaN;
+		const limit = (req.query.limit != null) ? Number(req.query.limit) : 300;
 
 		activityManager.getActivity(dbPool, tokenId, limit, (err, data) => {
 			if (err || !data) {
@@ -314,9 +314,6 @@ app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 	// console.log("REQ PARAMS:", req.params);
 
 	const albumUrl = '/' + req.params.album;
-	const thumbUrl = req.params['0'];
-	const fileUrl = req.params.photo;
-	const photoFile = photoPath + albumUrl + thumbUrl + fileUrl;
 
 	// We can first verify the key since it does NOT consume in here
 	tokenManager.verifyKey(dbPool, albumUrl, req.query.key, getUserData(req), (err, ok) => {
@@ -326,6 +323,10 @@ app.get(photoUrl + '/:album' + '*' + ':photo', (req, res) => {
 			unauthorized(err, res);
 		}
 		else {
+			const thumbUrl = req.params['0'];
+			const fileUrl = req.params.photo;
+			const photoFile = photoPath + albumUrl + thumbUrl + fileUrl;
+
 			fs.access(photoFile, fs.constants.F_OK | fs.constants.R_OK, err => {
 				if (!err) {
 					res.sendFile(photoFile);
@@ -346,17 +347,7 @@ app.get('/:album', (req, res) => {
 	console.log("REQ PARAMS:", req.params);
 
 	const album_url = '/' + req.params.album;
-	const target_url = photoUrl + album_url;
 	const target_path = photoPath + album_url;
-
-	// Current page
-	var page = Number(req.query.page);
-	page = (page != null && !isNaN(page) && page > 0) ? parseInt(page, 10) : 1;
-
-	// Hardcoded limit for items per page
-	// Maybe allow user input within safe limits (1 <= x <= 100)?
-	// NOTE: Match with the columns in gallery page (LIMIT % cols_per_row == 0)
-	const LIMIT = PAGE_LIMIT;
 
 	fs.access(target_path, fs.constants.R_OK | fs.constants.X_OK, err => {
 		if (err) {
@@ -370,6 +361,17 @@ app.get('/:album', (req, res) => {
 					unauthorized(err, res);
 					return;
 				}
+
+				const target_url = photoUrl + album_url;
+
+				// Hardcoded limit for items per page
+				// Maybe allow user input within safe limits (1 <= x <= 100)?
+				// NOTE: Match with the columns in gallery page (LIMIT % cols_per_row == 0)
+				const LIMIT = PAGE_LIMIT;
+
+				// Current page
+				var page = Number(req.query.page);
+				page = (page != null && !isNaN(page) && page > 0) ? parseInt(page, 10) : 1;
 
 				fs.readdir(target_path, (err, files) => {
 					if (err) {
