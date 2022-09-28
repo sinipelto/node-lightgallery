@@ -102,7 +102,7 @@ const unauthorized = (err, res) => {
 const getUserData = (req) => {
 	return {
 		'address': req.clientIp,
-		'userAgent': req.userAgent,
+		'userAgent': req.useragent.source,
 	};
 };
 
