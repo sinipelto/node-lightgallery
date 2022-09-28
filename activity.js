@@ -1,9 +1,5 @@
 const utils = require('./utils.js');
 const tokenManager = require('./token.js');
-const { response } = require('express');
-const res = require('express/lib/response');
-
-const QUERY_FIELDS = "id, token_id, INET_NTOA(address) AS address, created";
 
 const TABLE = process.env.VISIT_TABLE;
 
@@ -11,8 +7,10 @@ if (!TABLE) {
 	throw "Invalid table name. Check env var is set.";
 }
 
-const queryGetAll = (tokenId, limit) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${!tokenId ? "" : "WHERE token_id = ?"} ORDER BY created DESC ${!limit ? "" : " LIMIT ?"};`;
-const queryNew = () => `INSERT INTO ${TABLE} (token_id, address) VALUES (?, INET_ATON(?));`;
+const QUERY_FIELDS = "id, token_id, INET_NTOA(address) AS address, user_agent, created";
+
+const queryGetAll = (tokenId, limit) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${!tokenId ? "" : "WHERE token_id = ?"} ORDER BY created DESC ${!limit ? "" : "LIMIT ?"};`;
+const queryNew = (id, address, agent) => `INSERT INTO ${TABLE} (${id ? "token_id," : ""} ${address ? "address," : ""} ${agent ? "user_agent" : ""}) VALUES (${id ? "?," : ""} ${address ? "INET_ATON(?)," : ""} ${agent ? "?" : ""});`;
 
 module.exports.getActivity = (con, tokenId, limit, callback) => {
 	if (!con) {
@@ -72,7 +70,7 @@ module.exports.addActivity = (con, data, callback) => {
 		return;
 	}
 
-	con.query(queryNew(), [data.token.id, data.info.address], (qerr, res) => {
+	con.query(queryNew(true, true, true), [data.token.id, data.info.address, data.info.userAgent], (qerr, res) => {
 		if (qerr || !res) {
 			console.error("ERROR: Failed to add new activity entry:", qerr);
 			callback(qerr, false);
