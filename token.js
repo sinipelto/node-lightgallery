@@ -56,7 +56,7 @@ const keyCache = new NodeCache({
 	deleteOnExpire: CACHE_DELETE_EXPIRED,
 });
 
-module.exports.verifyKey = (con, album, key, info, callback, consume = true) => {
+module.exports.verifyKey = (con, album, key, userInfo, callback, consume = true) => {
 	if (!con) {
 		callback("INVALID_OR_BAD_CONNECTION", false);
 		return;
@@ -135,7 +135,7 @@ module.exports.verifyKey = (con, album, key, info, callback, consume = true) => 
 		}
 
 		if (consume) {
-			activityManager.addActivity(con, { 'token': row, 'info': info }, (err, ares) => {
+			activityManager.addActivity(con, { 'token': row, 'info': userInfo }, (err, ares) => {
 				if (err || !ares) {
 					console.error("ERROR: Failed to log activity:", err);
 				}
