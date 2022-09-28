@@ -10,7 +10,7 @@ if (!TABLE) {
 const QUERY_FIELDS = "id, token_id, INET_NTOA(address) AS address, user_agent, created";
 
 const queryGetAll = (tokenId, limit) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${!tokenId ? "" : "WHERE token_id = ?"} ORDER BY created DESC ${!limit ? "" : "LIMIT ?"};`;
-const queryNew = (id, address, agent) => `INSERT INTO ${TABLE} (${id ? "token_id," : ""} ${address ? "address," : ""} ${agent ? "user_agent" : ""}) VALUES (${id ? "?," : ""} ${address ? "INET_ATON(?)," : ""} ${agent ? "?" : ""});`;
+const queryNew = () => `INSERT INTO ${TABLE} (token_id, address, user_agent) VALUES (?, INET_ATON(?), ?);`;
 
 module.exports.getActivity = (con, tokenId, limit, callback) => {
 	if (!con) {
@@ -70,7 +70,9 @@ module.exports.addActivity = (con, data, callback) => {
 		return;
 	}
 
-	con.query(queryNew(true, true, true), [data.token.id, data.info.address, data.info.userAgent], (qerr, res) => {
+	console.log(queryNew());
+	console.log(data);
+	con.query(queryNew(), [data.token.id, data.info.address, data.info.userAgent], (qerr, res) => {
 		if (qerr || !res) {
 			console.error("ERROR: Failed to add new activity entry:", qerr);
 			callback(qerr, false);
