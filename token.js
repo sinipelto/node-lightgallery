@@ -355,8 +355,7 @@ module.exports.writeKeysToFile = (filename, data) => {
 		if (err) {
 			console.error("Failed to write keys to file:", err);
 			throw err;
-		} else {
-			console.log("Keys written into file: " + filename);
 		}
+		console.log("Keys written into file: " + filename);
 	});
 };
