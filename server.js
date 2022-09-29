@@ -149,13 +149,18 @@ app.get(route_logs, (req, res) => {
 			}
 			else {
 				try {
-					const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
-					const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
+					// Handle logs row limit
+					const limitInt = (req.query.limit != null && req.query.limit != '') ? parseInt(Number(req.query.limit), 10) : NaN;
+					const limit = (!isNaN(limitInt) && limitInt > 0 && limitInt <= MAX_LOG_LINES) ? limitInt : Number(defaultLogLineLimit);
 
 					// Sanitize ' to apply into grep 'FILTER'
 					const filter = (req.query.filter != null && req.query.filter != '') ? req.query.filter.replace("'", "") : null;
 
-					exec(`journalctl -ru ${serviceName} ${filter ? `| grep -E '${filter}'` : ""} | head -${limit}`, (err, stdout, stderr) => {
+					// Grep expand lines
+					const expandInt = (req.query.expand != null && req.query.expand != '') ? parseInt(Number(req.query.expand), 10) : NaN;
+					const expand = (!isNaN(expandInt) && expandInt > 0 && expandInt <= MAX_LOG_LINES) ? expandInt : null;
+
+					exec(`journalctl -ru ${serviceName} ${filter ? `| grep -E '${filter}'` : ""} ${(filter && expand) ? `-A${expand} -B${expand}` : ""} | head -${limit}`, (err, stdout, stderr) => {
 						if (err) {
 							console.error("Failed to execute command:", err);
 							res.status(500).send("ERROR: Failed to retrieve logs.");
