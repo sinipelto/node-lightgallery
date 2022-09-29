@@ -151,9 +151,11 @@ app.get(route_logs, (req, res) => {
 				try {
 					const limitNum = (req.query.limit != null) ? Number(req.query.limit) : NaN;
 					const limit = (limitNum != null && !isNaN(limitNum) && limitNum > 0 && limitNum <= MAX_LOG_LINES) ? limitNum : Number(defaultLogLineLimit);
-					const filter = (req.query.filter != null && req.query.filter != '') ? req.query.filter.replace("|", "").replace(">", "").replace("<", "") : null;
 
-					exec(`journalctl -ru ${serviceName} ${filter ? `| grep '${filter}'` : ""} | tail -${limit}`, (err, stdout, stderr) => {
+					// Sanitize ' to apply into grep 'FILTER'
+					const filter = (req.query.filter != null && req.query.filter != '') ? req.query.filter.replace("'", "") : null;
+
+					exec(`journalctl -ru ${serviceName} ${filter ? `| grep -E '${filter}'` : ""} | head -${limit}`, (err, stdout, stderr) => {
 						if (err) {
 							console.error("Failed to execute command:", err);
 							res.status(500).send("ERROR: Failed to retrieve logs.");
