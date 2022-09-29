@@ -163,6 +163,7 @@ module.exports.initDatabase = () => {
 		id INT UNSIGNED AUTO_INCREMENT UNIQUE PRIMARY KEY,
 		token_id INT UNSIGNED NOT NULL,
 		address INT UNSIGNED NOT NULL,
+		user_agent VARCHAR(255) NULL DEFAULT NULL,
 		created DATETIME(4) NOT NULL DEFAULT(NOW(4)),
 		FOREIGN KEY (token_id) REFERENCES ${TOKEN_TABLE}(id)
 	);`;
