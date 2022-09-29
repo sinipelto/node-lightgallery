@@ -70,8 +70,6 @@ module.exports.addActivity = (con, data, callback) => {
 		return;
 	}
 
-	console.log(queryNew());
-	console.log(data);
 	con.query(queryNew(), [data.token.id, data.info.address, data.info.userAgent], (qerr, res) => {
 		if (qerr || !res) {
 			console.error("ERROR: Failed to add new activity entry:", qerr);
