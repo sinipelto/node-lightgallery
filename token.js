@@ -40,14 +40,14 @@ if (!TABLE || TABLE == '') {
 
 const QUERY_FIELDS = "id, album, TO_BASE64(HEX(value)) AS value, usages_init, usages_left, (usages_init - usages_left) as usages, created";
 
-const queryGetAll = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ?" : ""};`;
-const queryGetAllExisting = (album) => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ? AND" : "WHERE"} deleted IS FALSE;`;
+const queryGetAll = album => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ?" : ""};`;
+const queryGetAllExisting = album => `SELECT ${QUERY_FIELDS} FROM ${TABLE} ${(album) ? "WHERE album = ? AND" : "WHERE"} deleted IS FALSE;`;
 const queryGetById = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE id = ? AND deleted IS FALSE;`;
-const queryGetValid = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND usages_left > 0 AND deleted IS FALSE;`;
+const queryGetValid = () => `SELECT ${QUERY_FIELDS} FROM ${TABLE} WHERE album = ? AND TO_BASE64(HEX(value)) = ? AND deleted IS FALSE;`;
 
 const queryNew = () => `INSERT INTO ${TABLE} (album, usages_init, usages_left) VALUES (?, ?, ?);`;
-const queryUpdate = (reset) => `UPDATE ${TABLE} SET ${reset ? "usages_init = ?," : ""} usages_left = ? WHERE id = ? AND deleted IS FALSE;`;
-const queryDelete = (filter) => `UPDATE ${TABLE} SET deleted = TRUE ${filter ? "WHERE " + filter + " = ? AND" : "WHERE"} deleted IS FALSE;`;
+const queryUpdate = reset => `UPDATE ${TABLE} SET ${reset ? "usages_init = ?," : ""} usages_left = ? WHERE id = ? AND deleted IS FALSE;`;
+const queryDelete = filter => `UPDATE ${TABLE} SET deleted = TRUE ${filter ? "WHERE " + filter + " = ? AND" : "WHERE"} deleted IS FALSE;`;
 
 const keyCache = new NodeCache({
 	stdTTL: CACHE_TTL,
@@ -56,19 +56,38 @@ const keyCache = new NodeCache({
 	deleteOnExpire: CACHE_DELETE_EXPIRED,
 });
 
+const updateCache = row => {
+	if (CACHE_ENABLED) {
+		// Set both value and ID as keys, to match both in later queries
+		keyCache.set(row.id, row);
+		keyCache.set(row.value, row);
+	}
+};
+
+const deleteCache = id => {
+	if (CACHE_ENABLED) {
+		// Remove both ID and value cache entries
+		if (keyCache.has(id)) {
+			const entry = keyCache.get(id);
+			keyCache.del(entry.value);
+			keyCache.del(id);
+		}
+	}
+};
+
 module.exports.verifyKey = (con, album, key, userInfo, callback, consume = true) => {
 	if (!con) {
 		callback("INVALID_OR_BAD_CONNECTION", false);
 		return;
 	}
 
-	if (!utils.validateKey(key)) {
-		callback("INVALID_KEY", false);
+	if (!utils.validateAlbum(album)) {
+		callback("INVALID_ALBUM", false);
 		return;
 	}
 
-	if (!utils.validateAlbum(album)) {
-		callback("INVALID_ALBUM", false);
+	if (!utils.validateKey(key)) {
+		callback("INVALID_KEY", false);
 		return;
 	}
 
@@ -86,11 +105,17 @@ module.exports.verifyKey = (con, album, key, userInfo, callback, consume = true)
 				callback("INCORRECT_KEY", false);
 				return;
 			}
-			// Found in cache, not incorrect, matches the album
-			// If consuming, need to query anyway, otherwise verify keys match
-			if (!consume && cachedKey.value == key) {
-				callback(null, true);
-				return;
+			// Found in cache, not incorrect, has usages left, matches the album
+			// If consuming, need to query update etc anyway, otherwise verify keys match
+			// If following criteria not fulfilled, needed to fetch up-to-date value from DB
+			if (cachedKey.usages_left > 0 && cachedKey.value == key) {
+				if (!consume) {
+					callback(null, true);
+					return;
+				}
+			} else {
+				// For some reason cached key not OK, we need to refresh it
+				cachedKey = null;
 			}
 		}
 	}
@@ -125,40 +150,42 @@ module.exports.verifyKey = (con, album, key, userInfo, callback, consume = true)
 		// res = array with 1 element
 		row = res[0];
 
-		if (CACHE_ENABLED) {
-			// Set both value and ID as keys, to match both in later queries
-			keyCache.set(row.id, row);
-			keyCache.set(row.value, row);
+		if (row.usages_left <= 0) {
+			console.error("ERROR: Key is depleted, out of usages.");
+			callback("KEY_USAGES_DEPLETED", false);
+			return;
 		}
 
+		// This should never occur
+		if (row.value != key) {
+			callback("KEY_VERIFICATION_MISMATCH", false);
+			return;
+		}
+
+		// Create cache entry at this point
+		// To ensure subsequent loads use cached value
+		updateCache(row);
+
+		// FINAL POINT OF RETURN
+		// After this performance does not matter
+		callback(null, true);
+
 		if (consume) {
+			// Register activity
 			activityManager.addActivity(con, { 'token': row, 'info': userInfo }, (err, ares) => {
 				if (err || !ares) {
 					console.error("ERROR: Failed to log activity:", err);
 				}
 			});
 
-			this.updateKey(con, row.id, row.usages_left - 1, (err, ok) => {
-				if (err || !ok) {
-					console.error(err);
-					callback("UPDATE_USAGES_FAILED", false);
-					return;
+			// Store new usage to DB
+			this.updateKey(con, row.id, row.usages_left - 1, (err, ures) => {
+				if (err || !ures) {
+					console.error("ERROR: Failed to update key:", err);
 				}
-
-				if (row.value == key) {
-					callback(null, true);
-					return;
-				}
-
-				// This should never occur
-				callback("KEY_VERIFICATION_MISMATCH", false);
-				return;
+				// updateCache called
 			});
-
-			return;
 		}
-
-		callback(null, true);
 	};
 
 	if (cachedKey) {
@@ -185,9 +212,15 @@ module.exports.createKey = (con, album, usages, callback) => {
 	}
 
 	con.query(queryNew(), [album, usages, usages], (qerr, res) => {
-		if (qerr) {
+		if (qerr || !res) {
 			console.error(qerr);
 			callback(qerr, false);
+			return;
+		}
+
+		if (res.length <= 0 || res.affectedRows <= 0) {
+			console.error("ERROR: Key to update was not found or afftected with ID:", id);
+			callback("KEY_ROWS_NOT_AFFECTED", false);
 			return;
 		}
 
@@ -224,6 +257,14 @@ module.exports.updateKey = (con, id, usages, callback, reset = false) => {
 			return;
 		}
 
+		// Ensure cache gets updated on key modification
+		this.getKey(con, id, (err, res) => {
+			if (err || !res) {
+				console.error("ERROR: Failed to update cache:", err);
+			}
+			// updateCache(row) called
+		}, useCache = false);
+
 		callback(null, true);
 	});
 
@@ -252,6 +293,9 @@ module.exports.deleteKey = (con, id, callback) => {
 			callback("KEY_NOT_FOUND", false);
 			return;
 		}
+
+		// Delete key from cache on successful delete
+		deleteCache(id);
 
 		callback(null, true);
 	});
@@ -287,7 +331,7 @@ module.exports.getKeys = (con, album, callback) => {
 	});
 };
 
-module.exports.getKey = (con, id, callback) => {
+module.exports.getKey = (con, id, callback, useCache = true) => {
 	if (!con) {
 		callback("INVALID_OR_BAD_CONNECTION", false);
 		return;
@@ -298,15 +342,19 @@ module.exports.getKey = (con, id, callback) => {
 		return;
 	}
 
-	if (CACHE_ENABLED && keyCache.has(id)) {
-		const entry = keyCache.get(id);
-		// Should never occur
-		if (entry.id !== id) {
-			callback("KEY_CACHE_ID_MISMATCH", false);
+	if (useCache && CACHE_ENABLED) {
+		// If key incorrect, not found by ID
+		if (keyCache.has(id)) {
+			const entry = keyCache.get(id);
+			// Should never occur
+			if (entry.id !== id) {
+				callback("KEY_CACHE_ID_MISMATCH", false);
+				return;
+			}
+			// Valid key found in cache and verified ok
+			callback(null, entry);
 			return;
 		}
-		callback(null, entry);
-		return;
 	}
 
 	con.query(queryGetById(), [id], (qerr, res) => {
@@ -331,12 +379,10 @@ module.exports.getKey = (con, id, callback) => {
 
 		row = res[0];
 
-		// Update/refresh cache on successful fetch
-		if (CACHE_ENABLED) {
-			keyCache.set(row.id, row);
-			keyCache.set(row.value, row);
-		}
+		// Ensure cache is updated with the new fetched value
+		updateCache(row);
 
+		// Return fetched key to the callback
 		callback(null, row);
 	});
 };
