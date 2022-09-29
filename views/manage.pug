@@ -5,19 +5,30 @@ include _header.pug
 include _jq.pug
 include _bs.pug
 
-title Gallery Management
+title Gallery Management Page
 
 body
+	#promptModal.modal.fade
+		.modal-dialog 
+			.modal-content
+				.modal-header
+					h5#promptLabel.modal-title TITLE
+					button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+				#promptBody.modal-body CONTENT
+				.modal-footer
+					button#promptCancel.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+					button#promptConfirm.btn.btn-danger(type="button") Confirm
+
 	#main
 		section.jumbotron.text-center
-			#errorMsg.alert.alert-danger.alert-dismissible.fade.show(role="alert", style="display: none;")
-				strong#errorMsgText Hello!
-				button.btn-close(type="button", data-bs-dismiss="alert", aria-label="Close")
+			#errorMsg.alert.alert-danger.alert-dismissible.fade.show(role="alert" style="display: none;")
+				strong#errorMsgText ERROR
+				button.btn-close(type="button" data-bs-dismiss="alert" aria-label="Close")
 
 			.container
-				h1.jumbotron-heading Albums Management:
+				h1.jumbotron-heading Gallery Management:
 			p.lead.text-muted.
-				Create, update, revoke access keys to different albums here.
+				Create, update, revoke access keys to different albums and other pages here.
 		br
 		br
 
@@ -49,9 +60,9 @@ body
 								td= token.usages
 								td= token.created.toLocaleString()
 								td
-									button(onclick=`revokeKey(${token.id});`).btn.btn-warning Revoke
+									button(onclick=`prompt(revokeKey, ${token.id});`).btn.btn-warning Revoke
 								td
-									button(onclick=`deleteKey(${token.id});`).btn.btn-danger Delete
+									button(onclick=`prompt(deleteKey, ${token.id});`).btn.btn-danger Delete
 								td
 									button(onclick=`infoKey(${token.id});`).btn.btn-info Activity
 
@@ -95,4 +106,28 @@ body
 	script(type="text/javascript").
 		const AUTH_KEY = "#{key}";
 
-	script(type="text/javascript", src="/static/management.js")
+	script(type="text/javascript").
+		function prompt(action, id) {
+			const modal = new bootstrap.Modal($("#promptModal"));
+			const confirm = $("#promptConfirm");
+			const label = $("#promptLabel");
+			const body = $("#promptBody");
+
+			if (action === revokeKey) {
+				label.text("Revoke Key");
+				body.text(`Are you sure you want to revoke key ${id}?`);
+			}
+			else if (action === deleteKey) {
+				label.text("Delete Key");
+				body.text(`Are you sure you want to delete key ${id}?`);
+
+			}
+			else {
+				throw "ERROR: Unknown prompt request.";
+			}
+
+			confirm.on("click", () => action(id));
+			modal.show();
+		}
+
+	script(type="text/javascript" src="/static/management.js")
