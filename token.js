@@ -81,19 +81,16 @@ module.exports.verifyKey = (con, album, key, userInfo, callback, consume = true)
 	if (CACHE_ENABLED) {
 		if (keyCache.has(key)) {
 			cachedKey = keyCache.get(key);
-			if (cachedKey.album == album) {
-				if (cachedKey.incorrect) {
-					// console.debug("Key in cache, is incorrect.");
-					callback("INCORRECT_KEY", false);
-					return;
-				}
-				if (cachedKey.value == key) {
-					// console.debug("Found matching key for the album in cache. Verification ok.");
-					if (!consume) {
-						callback(null, true);
-						return;
-					}
-				}
+			// Key already in cache, is incorrect or does not match this album.
+			if (cachedKey.incorrect || cachedKey.album != album) {
+				callback("INCORRECT_KEY", false);
+				return;
+			}
+			// Found in cache, not incorrect, matches the album
+			// If consuming, need to query anyway, otherwise verify keys match
+			if (!consume && cachedKey.value == key) {
+				callback(null, true);
+				return;
 			}
 		}
 	}
@@ -112,7 +109,7 @@ module.exports.verifyKey = (con, album, key, userInfo, callback, consume = true)
 				// Key obj does not exist => create new custom object with requried attributes
 				keyCache.set(key, { 'incorrect': true, 'album': album, value: key });
 			}
-			console.error(`Matching key not found. Album: ${album} Key: ${key}`);
+			console.error(`ERROR: Matching key not found. Album: ${album} Key: ${key}`);
 			callback("INCORRECT_KEY", false);
 			return;
 		}
