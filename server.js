@@ -165,6 +165,7 @@ app.get(route_logs, (req, res) => {
 							console.error("Failed to execute command:", err);
 							res.status(500).send("ERROR: Failed to retrieve logs.");
 						} else {
+							// TODO: PUG template for logs page, render STDOUT and STDERR into elements
 							res.send("STDOUT:<br><br>" + stdout.newLineToHtml() + "<br><br><br>" + "STDERR:<br><br>" + stderr.newLineToHtml());
 						}
 					});
