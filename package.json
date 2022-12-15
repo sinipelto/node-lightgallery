@@ -5,7 +5,7 @@
 	"main": "server.js",
 	"dependencies": {
 		"dotenv": "^10.0.0",
-		"express": "^4.17.2",
+		"express": "^4.17.3",
 		"express-useragent": "^1.0.15",
 		"find-config": "^1.0.0",
 		"lightgallery": "^2.3.0",
