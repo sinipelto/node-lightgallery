@@ -65,15 +65,11 @@ Create a systemd daemon service for the node application:
 nano node-gallery.service
 ```
 
-Write and Modify the following to match with your environment:
+Write and Modify the following to match with your environment, OS etc.:
 ```text
 [Unit]
-Description=Service for node.js Lightgallery app
-After=network.target
-StartLimitIntervalSec=0
-
-[Install]
-WantedBy=multi-user.target
+Description=Systemd Service Unit for node.js Lightgallery App
+After=network.target network-online.target
 
 [Service]
 WorkingDirectory=/path/to/gallery
@@ -81,8 +77,11 @@ EnvironmentFile=/path/to/gallery/.env
 Type=simple
 Restart=always
 RestartSec=3
-User=USER
+User=<USER or nobody>
 ExecStart=/usr/bin/env npm start
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 ```text
@@ -178,7 +177,12 @@ Go to the management page: `http(s)://server-url/management?key=<TOKEN_VALUE>`.
 OR to create the URL programmatically:
 
 ```bash
-echo "http(s)://server-url/management?key=$(cat tokens.json | grep "management" -m1 -A1 | tr { '\n' | tr , '\n' | tr } '\n' | grep "value" | awk  -F'"' '{print $4}')"
+echo "http(s)://<YOUR-SERVER-URL>:<PORT>/management?key=$(cat tokens.json | grep "management" -m1 -A1 | tr { '\n' | tr , '\n' | tr } '\n' | grep "value" | awk  -F'"' '{print $4}')"
+```
+
+e.g.
+```bash
+echo "http://127.0.0.1/management?key=$(cat tokens.json | grep "management" -m1 -A1 | tr { '\n' | tr , '\n' | tr } '\n' | grep "value" | awk  -F'"' '{print $4}')"
 ```
 
 From the Management page you can manage (create, edit, delete, disable) all of the access tokens (including management and index page keys).
